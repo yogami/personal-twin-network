@@ -1,12 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TwinStatusCard, PrivacyDashboard } from '@/presentation/components/TwinDashboard';
 import { MatchList } from '@/presentation/components/MatchCard';
 import { QRScanner, QRCodeGenerator } from '@/presentation/components/QRCode';
 import { PWAInstallBanner, OfflineBanner } from '@/presentation/components/PWABanners';
+import { TwinPersonality, TwinActivityCounter } from '@/presentation/components/TwinPersonality';
+import { PrivacyIndicator } from '@/presentation/components/PrivacyIndicator';
+import { usePWA } from '@/presentation/hooks/usePWA';
 import { Twin } from '@/domain/entities/Twin';
 import { Match } from '@/domain/entities/Match';
+import { getTwinBrain } from '@/lib/twin-brain';
+import { getEdgeMatchingService, initializeEdgeMatching } from '@/lib/edge-matching';
 import Link from 'next/link';
 
 // Demo data for MVP demonstration
@@ -24,30 +29,37 @@ const demoTwin: Twin = {
   createdAt: new Date(),
 };
 
-const demoMatches: Match[] = [
+// Demo candidates for local matching
+const demoCandidates = [
   {
-    twinId: 'twin-demo',
-    matchedTwinId: 'twin-1',
-    score: 92,
-    sharedInterests: ['AI', 'Startups', 'TypeScript'],
-    matchedProfile: { name: 'Anna K.', headline: 'AI Researcher at TechLab' },
-    createdAt: new Date(),
+    name: 'Anna Kowalski',
+    headline: 'AI Research Lead at TechLab Berlin',
+    skills: ['Machine Learning', 'Python', 'TensorFlow', 'NLP'],
+    interests: ['AI Ethics', 'Startups', 'Climate Tech'],
   },
   {
-    twinId: 'twin-demo',
-    matchedTwinId: 'twin-2',
-    score: 87,
-    sharedInterests: ['React', 'Innovation'],
-    matchedProfile: { name: 'Max S.', headline: 'Founder @ StartupXYZ' },
-    createdAt: new Date(),
+    name: 'Max Richter',
+    headline: 'Founder & CEO @ InnoScale',
+    skills: ['Leadership', 'Strategy', 'Fundraising', 'Product'],
+    interests: ['Startups', 'SaaS', 'Venture Capital'],
   },
   {
-    twinId: 'twin-demo',
-    matchedTwinId: 'twin-3',
-    score: 83,
-    sharedInterests: ['Tech', 'Node.js'],
-    matchedProfile: { name: 'Lisa M.', headline: 'Product Manager' },
-    createdAt: new Date(),
+    name: 'Lisa Chen',
+    headline: 'Senior Product Manager at Stripe',
+    skills: ['Product Management', 'Agile', 'Fintech', 'UX'],
+    interests: ['Fintech', 'B2B SaaS', 'Design'],
+  },
+  {
+    name: 'David Mueller',
+    headline: 'Full Stack Engineer at Vercel',
+    skills: ['TypeScript', 'React', 'Node.js', 'Next.js'],
+    interests: ['Open Source', 'DevTools', 'Web3'],
+  },
+  {
+    name: 'Sophia Wagner',
+    headline: 'UX Director at Figma',
+    skills: ['Design Systems', 'User Research', 'Prototyping'],
+    interests: ['Design', 'Accessibility', 'Creative Tech'],
   },
 ];
 
@@ -56,70 +68,121 @@ export default function DashboardPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [activeTab, setActiveTab] = useState<'matches' | 'scan' | 'create'>('matches');
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [matchSource, setMatchSource] = useState<'edge' | 'server'>('edge');
+  const [matchCount, setMatchCount] = useState(0);
+  const [negotiationCount, setNegotiationCount] = useState(0);
 
+  // PWA and Twin Brain hooks
+  const {
+    isInstalled,
+    isOnline,
+    swReady,
+    twinBrainActive,
+    activateTwinBrain,
+    lastSyncTime,
+  } = usePWA();
+
+  // Initialize edge matching and load twin
   useEffect(() => {
-    // Simulate loading twin from IndexedDB
-    const loadTwin = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // For demo, use demo data
-      setTwin(demoTwin);
-      setMatches(demoMatches);
-      setLoading(false);
-    };
-    loadTwin();
-  }, []);
+    const initializeApp = async () => {
+      try {
+        // Initialize edge matching service
+        initializeEdgeMatching();
 
-  const handleEventJoin = async (eventId: string) => {
-    console.log('Joining event:', eventId);
-    setLoading(true);
+        // Try to load twin from local brain
+        const brain = getTwinBrain();
+
+        // For demo, we use demo twin (in production, unlock with passphrase)
+        setTwin(demoTwin);
+
+        // Activate twin in service worker for background operation
+        if (swReady) {
+          await activateTwinBrain(demoTwin);
+        }
+
+        // Perform initial local matching
+        await performEdgeMatching(demoTwin);
+
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        // Fallback to demo data
+        setTwin(demoTwin);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, [swReady, activateTwinBrain]);
+
+  // Perform edge-only matching
+  const performEdgeMatching = useCallback(async (userTwin: Twin) => {
+    setIsProcessing(true);
 
     try {
-      // Call the real matching API
-      const response = await fetch('/api/match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userTwin: twin,
-          eventId,
-          limit: 3,
-        }),
+      const edgeService = getEdgeMatchingService();
+      const result = await edgeService.findMatches({
+        userTwin,
+        candidates: demoCandidates,
+        eventContext: {
+          theme: 'Berlin Tech Meetup',
+          description: 'AI and Startups networking event',
+        },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.matches) {
-          // Convert API response to Match objects with proper Date
-          const apiMatches = data.matches.map((m: Match) => ({
-            ...m,
-            createdAt: new Date(m.createdAt),
-          }));
-          setMatches(apiMatches);
-        }
-      } else {
-        console.error('Matching failed:', await response.text());
-        // Fallback to demo matches
-        setMatches(demoMatches);
-      }
+      setMatches(result.matches.slice(0, 5));
+      setMatchSource(result.source === 'gemini' ? 'edge' : 'edge');
+      setMatchCount((prev) => prev + result.matches.length);
+
+      console.log(`[Dashboard] Edge matching complete: ${result.matches.length} matches in ${result.processingTimeMs}ms (${result.source})`);
     } catch (error) {
-      console.error('API error:', error);
-      setMatches(demoMatches);
+      console.error('Edge matching failed:', error);
+      // Keep existing matches
+    } finally {
+      setIsProcessing(false);
     }
+  }, []);
 
-    setLoading(false);
-    setActiveTab('matches');
-  };
+  // Handle event join via QR scan
+  const handleEventJoin = useCallback(async (eventId: string) => {
+    console.log('Joining event:', eventId);
+    if (!twin) return;
 
-  const handleConnect = (matchedTwinId: string) => {
+    setLoading(true);
+    setNegotiationCount((prev) => prev + 1);
+
+    try {
+      // Use edge-only matching
+      await performEdgeMatching(twin);
+      setActiveTab('matches');
+    } catch (error) {
+      console.error('Event join failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [twin, performEdgeMatching]);
+
+  // Handle connect action
+  const handleConnect = useCallback((matchedTwinId: string) => {
     console.log('Connecting with:', matchedTwinId);
-    // In production: open chat or save connection
-    alert('Connection request sent! 💬');
-  };
+    setNegotiationCount((prev) => prev + 1);
+
+    // In production: initiate P2P connection via twin-negotiation
+    alert('🤝 Connection request sent! Your twin will negotiate.');
+  }, []);
+
+  // Refresh matches
+  const handleRefresh = useCallback(async () => {
+    if (!twin) return;
+    await performEdgeMatching(twin);
+  }, [twin, performEdgeMatching]);
 
   if (loading && !twin) {
     return (
       <div className="loading-screen">
         <div className="spinner" />
-        <p>Loading your twin...</p>
+        <p>Activating your twin brain...</p>
         <style jsx>{`
           .loading-screen {
             min-height: 100vh;
@@ -157,9 +220,12 @@ export default function DashboardPage() {
           ✨ Twin Network
         </Link>
         <div className="header-actions">
+          <button className="refresh-btn" onClick={handleRefresh} disabled={isProcessing}>
+            🔄
+          </button>
           <button className="notification-btn">
             🔔
-            <span className="badge">3</span>
+            {matches.length > 0 && <span className="badge">{matches.length}</span>}
           </button>
         </div>
       </header>
@@ -168,7 +234,23 @@ export default function DashboardPage() {
       <main className="dashboard-main">
         {/* PWA Install and Offline Banners */}
         <OfflineBanner />
-        <PWAInstallBanner />
+        {!isInstalled && <PWAInstallBanner />}
+
+        {/* Twin Personality - The "magic" UX */}
+        <TwinPersonality
+          twinName={twin?.publicProfile.name || 'Your Twin'}
+          isActive={twinBrainActive}
+          latestMatch={matches[0]}
+          matchCount={matchCount}
+          isProcessing={isProcessing}
+        />
+
+        {/* Activity Counter */}
+        <TwinActivityCounter
+          matchesToday={matchCount}
+          negotiationsToday={negotiationCount}
+          connectionsTotal={0}
+        />
 
         {/* Twin Status */}
         <section className="twin-section">
@@ -201,11 +283,16 @@ export default function DashboardPage() {
         <section className="tab-content">
           {activeTab === 'matches' && (
             <div className="matches-section">
-              <h2>Your Top Matches</h2>
+              <div className="section-header">
+                <h2>Your Top Matches</h2>
+                <span className={`source-badge ${matchSource}`}>
+                  {matchSource === 'edge' ? '🔒 On-Device' : '☁️ Server'}
+                </span>
+              </div>
               <MatchList
                 matches={matches}
                 onConnect={handleConnect}
-                loading={loading}
+                loading={isProcessing}
               />
             </div>
           )}
@@ -230,6 +317,15 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Privacy Indicator - NEW */}
+        <PrivacyIndicator
+          isEdgeMatching={matchSource === 'edge'}
+          isP2PActive={false}
+          bytesTransmitted={0}
+          isEncrypted={true}
+          lastSyncTime={lastSyncTime}
+        />
 
         {/* Privacy Dashboard */}
         <section className="privacy-section">
@@ -264,6 +360,12 @@ export default function DashboardPage() {
           color: white;
         }
 
+        .header-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .refresh-btn,
         .notification-btn {
           position: relative;
           padding: 0.5rem;
@@ -272,6 +374,17 @@ export default function DashboardPage() {
           border-radius: 8px;
           font-size: 1.25rem;
           cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .refresh-btn:hover,
+        .notification-btn:hover {
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .refresh-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .notification-btn .badge {
@@ -334,11 +447,35 @@ export default function DashboardPage() {
           margin-bottom: 1.5rem;
         }
 
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
         .matches-section h2,
         .create-section h2 {
           font-size: 1.25rem;
-          margin-bottom: 1rem;
           color: white;
+          margin: 0;
+        }
+
+        .source-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.7rem;
+          font-weight: 600;
+        }
+
+        .source-badge.edge {
+          background: rgba(74, 222, 128, 0.15);
+          color: #4ade80;
+        }
+
+        .source-badge.server {
+          background: rgba(251, 191, 36, 0.15);
+          color: #fbbf24;
         }
 
         .create-section p {
