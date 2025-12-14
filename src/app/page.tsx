@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TwinCreationForm } from '@/presentation/components/TwinCreationForm';
-import { TwinDomain } from '@/domain/entities/Twin';
+import { TwinDomain, createTwin } from '@/domain/entities/Twin';
+import { getTwinBrain } from '@/lib/twin-brain';
 import Link from 'next/link';
 
 interface TwinProfile {
@@ -16,11 +17,70 @@ interface TwinProfile {
 export default function Home() {
   const [twin, setTwin] = useState<TwinProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  const handleTwinCreated = (profile: TwinProfile) => {
-    setTwin(profile);
-    setShowForm(false);
-    // In production, this would save to IndexedDB and navigate to dashboard
+  // Check for existing twin on load
+  useEffect(() => {
+    const checkExistingTwin = async () => {
+      try {
+        const brain = getTwinBrain();
+        // Check if unlocked (or try to unlock with stored salt/demo pass for MVP convenience)
+        // For strict privacy, we should Ask for password. 
+        // For this Demo MVP, we'll auto-unlock with a fixed key if present to reduce friction
+        const unlocked = await brain.unlock('demo-privacy-key');
+        if (unlocked) {
+          const loadedTwin = await brain.getTwin();
+          if (loadedTwin && loadedTwin.active) {
+            setTwin({
+              name: loadedTwin.publicProfile.name,
+              headline: loadedTwin.publicProfile.headline,
+              skills: loadedTwin.publicProfile.skills,
+              interests: loadedTwin.publicProfile.interests,
+              domain: loadedTwin.domain
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load local twin", e);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    checkExistingTwin();
+  }, []);
+
+  const handleTwinCreated = async (profile: TwinProfile) => {
+    // 1. Save to Local Encrypted Storage
+    try {
+      const brain = getTwinBrain();
+
+      // Ensure unlocked
+      if (!brain.isUnlocked()) {
+        await brain.unlock('demo-privacy-key');
+      }
+
+      const newTwin = createTwin({
+        userId: 'local-user-' + Date.now(), // Local anonymity
+        domain: profile.domain,
+        publicProfile: {
+          name: profile.name,
+          headline: profile.headline,
+          skills: profile.skills,
+          interests: profile.interests
+        }
+      });
+
+      await brain.saveTwin(newTwin);
+
+      // 2. Update UI
+      setTwin(profile);
+      setShowForm(false);
+
+    } catch (err) {
+      console.error("Failed to save twin locally:", err);
+      alert("Privacy Error: Could not save to local secure storage.");
+    }
   };
 
   return (

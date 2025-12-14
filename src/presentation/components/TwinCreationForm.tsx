@@ -3,255 +3,360 @@
 import { useState, useRef } from 'react';
 import { TwinDomain } from '@/domain/entities/Twin';
 import {
-  extractLinkedInProfile,
-  parseManualProfile,
-  isValidLinkedInUrl,
-  ExtractedProfile
+    extractLinkedInProfile,
+    isValidLinkedInUrl,
+    ExtractedProfile
 } from '@/application/services/LinkedInExtractor';
+import { TwinInterview } from './TwinInterview';
 
 interface TwinFormData {
-  linkedinUrl: string;
-  name: string;
-  headline: string;
-  bio: string;
-  domain: TwinDomain;
+    name: string;
+    headline: string;
+    bio: string;
+    domain: TwinDomain;
 }
 
 interface TwinCreationFormProps {
-  onTwinCreated: (twin: {
-    name: string;
-    headline: string;
-    skills: string[];
-    interests: string[];
-    domain: TwinDomain;
-  }) => void;
-  loading?: boolean;
+    onTwinCreated: (twin: {
+        name: string;
+        headline: string;
+        skills: string[];
+        interests: string[];
+        domain: TwinDomain;
+    }) => void;
+    loading?: boolean;
+}
+
+// Function to get distinct skills/interests
+function unique(arr: string[]) {
+    return Array.from(new Set(arr));
+}
+
+function extractSkillsFromText(text: string): string[] {
+    const commonSkills = [
+        'JavaScript', 'TypeScript', 'Python', 'React', 'Node.js', 'AI', 'ML',
+        'Machine Learning', 'Data Science', 'Product Management', 'Agile',
+        'Scrum', 'AWS', 'Cloud', 'DevOps', 'Docker', 'Kubernetes', 'Design',
+        'UX', 'UI', 'Marketing', 'Sales', 'Strategy', 'Business', 'Leadership'
+    ];
+    return commonSkills.filter(s => text.toLowerCase().includes(s.toLowerCase()));
+}
+
+function extractInterestsFromText(text: string): string[] {
+    const commonInterests = [
+        'Startups', 'Innovation', 'Tech', 'Entrepreneurship', 'Sustainability',
+        'Climate', 'Health', 'Fintech', 'Gaming', 'Music', 'Travel', 'Sports'
+    ];
+    return commonInterests.filter(i => text.toLowerCase().includes(i.toLowerCase()));
 }
 
 /**
  * TwinCreationForm - Onboarding with multiple data sources
- * Supports LinkedIn URL and/or CV Upload
+ * Supports Multi-Social Links sent to /api/social/extract
  */
 export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormProps) {
-  const [step, setStep] = useState<'connect' | 'confirm'>('connect');
-  const [formData, setFormData] = useState<TwinFormData>({
-    linkedinUrl: '',
-    name: '',
-    headline: '',
-    bio: '',
-    domain: 'networking',
-  });
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [error, setError] = useState<string | null>(null);
+    const [mode, setMode] = useState<'upload' | 'interview'>('upload');
+    const [formData, setFormData] = useState<TwinFormData>({
+        name: '',
+        headline: '',
+        bio: '',
+        domain: 'networking',
+    });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type === 'application/pdf' ||
-        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        file.type === 'application/msword') {
-        setCvFile(file);
-        setError(null);
-      } else {
-        setError('Please upload a PDF or DOCX file.');
-      }
-    }
-  };
+    // Multi-Social State
+    const [socialLinks, setSocialLinks] = useState<string[]>(['']);
 
-  const handleConnectSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+    const [cvFile, setCvFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
-    // Validation: At least one source
-    if (!formData.linkedinUrl && !cvFile) {
-      setError('Please provide at least one source: LinkedIn URL or CV Upload.');
-      return;
-    }
+    // Handlers for Social Links
+    const handleLinkChange = (index: number, value: string) => {
+        const newLinks = [...socialLinks];
+        newLinks[index] = value;
+        setSocialLinks(newLinks);
+    };
 
-    if (formData.linkedinUrl && !isValidLinkedInUrl(formData.linkedinUrl)) {
-      setError('Invalid LinkedIn URL format.');
-      return;
-    }
-
-    setIsProcessing(true);
-    setStatusMessage('Initializing Twin Brain...');
-
-    let linkedInProfile: ExtractedProfile | null = null;
-    let cvText = '';
-
-    try {
-      // 1. Process LinkedIn if provided
-      if (formData.linkedinUrl) {
-        setStatusMessage('Scraping LinkedIn Profile...');
-        const result = await extractLinkedInProfile(formData.linkedinUrl);
-        if (result.success && result.profile) {
-          linkedInProfile = result.profile;
-        } else {
-          console.warn('LinkedIn extraction failed:', result.error);
-          // Don't fail hard if we have a CV, just warn?
-          if (!cvFile) {
-            throw new Error(result.error || 'Failed to extract LinkedIn profile');
-          }
+    const addLinkField = () => {
+        if (socialLinks.length < 5) {
+            setSocialLinks([...socialLinks, '']);
         }
-      }
+    };
 
-      // 2. Process CV if provided
-      if (cvFile) {
-        setStatusMessage('Reading CV/Resume...');
-        const fd = new FormData();
-        fd.append('file', cvFile);
+    const removeLinkField = (index: number) => {
+        if (socialLinks.length > 1) {
+            const newLinks = socialLinks.filter((_, i) => i !== index);
+            setSocialLinks(newLinks);
+        }
+    };
 
-        const res = await fetch('/api/document/parse', {
-          method: 'POST',
-          body: fd,
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file.type === 'application/pdf' ||
+                file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                file.type === 'application/msword') {
+                setCvFile(file);
+                setError(null);
+            } else {
+                setError('Please upload a PDF or DOCX file.');
+            }
+        }
+    };
+
+    const handleInterviewComplete = (extractedData: any) => {
+        onTwinCreated({
+            name: extractedData.name || "Anonymous",
+            headline: extractedData.headline || "Digital Twin User",
+            skills: extractedData.skills || [],
+            interests: extractedData.interests || [],
+            domain: formData.domain,
         });
+    };
 
-        if (!res.ok) throw new Error('Failed to parse document');
-        const data = await res.json();
-        cvText = data.text;
-      }
+    const handleConnectSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
 
-      // 3. Merge Data
-      setStatusMessage('Synthesizing Identity...');
+        const validLinks = socialLinks.filter(l => l.trim().length > 0);
 
-      // Prefer LinkedIn for structured data, fallback to CV cues (would need LLM parsing really, 
-      // but for now we mix them or rely on what we have)
+        // Validation: At least one source
+        if (validLinks.length === 0 && !cvFile) {
+            setError('Please provide at least one source: A Social Link or CV Upload.');
+            return;
+        }
 
-      // If we only have CV, we might need to parse name/headline from it or ask user.
-      // For this MVP, if only CV, we default name/headline if not parseable?
-      // Let's assume user might correct it in next step if we had one, but we jump to finding.
+        setIsProcessing(true);
+        setStatusMessage('Initializing Twin Brain...');
 
-      const name = linkedInProfile?.name || formData.name || "Anonymous User";
-      const headline = linkedInProfile?.headline || "Professional";
+        let extractedData: any = {
+            name: '',
+            headline: '',
+            skills: [] as string[],
+            interests: [] as string[],
+            bioParts: [] as string[]
+        };
+        let cvText = '';
 
-      // Merge skills
-      const linkedInSkills = linkedInProfile?.skills || [];
-      // Simple extraction from CV text for demo (in real app, send CV text to LLM to extract skills)
-      const cvSkills = extractSkillsFromText(cvText);
+        try {
+            // 1. Process Social Links (Parallel)
+            if (validLinks.length > 0) {
+                setStatusMessage(`Scanning ${validLinks.length} social footprint(s)...`);
 
-      const allSkills = Array.from(new Set([...linkedInSkills, ...cvSkills])).slice(0, 15);
+                const results = await Promise.all(validLinks.map(async (url) => {
+                    try {
+                        const res = await fetch('/api/social/extract', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url })
+                        });
+                        return await res.json();
+                    } catch (e) {
+                        console.error("Failed to extract", url, e);
+                        return null;
+                    }
+                }));
 
-      const combinedBio = [
-        linkedInProfile?.name ? `LinkedIn Bio: ${linkedInProfile.name}` : '',
-        cvText ? `CV Content: ${cvText.slice(0, 500)}...` : ''
-      ].join('\n\n');
+                // Merge Results
+                for (const res of results) {
+                    if (res) {
+                        if (res.name && !extractedData.name) extractedData.name = res.name;
+                        if (res.headline && !extractedData.headline) extractedData.headline = res.headline;
+                        if (res.skills) extractedData.skills.push(...res.skills);
+                        if (res.interests) extractedData.interests.push(...res.interests);
+                        if (res.bio) extractedData.bioParts.push(res.bio);
+                    }
+                }
+            }
 
-      onTwinCreated({
-        name,
-        headline,
-        skills: allSkills,
-        interests: linkedInProfile?.interests || extractInterestsFromText(cvText),
-        domain: formData.domain,
-      });
+            // 2. Process CV if provided
+            if (cvFile) {
+                setStatusMessage('Reading CV/Resume...');
+                const fd = new FormData();
+                fd.append('file', cvFile);
 
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during processing.');
-      setIsProcessing(false);
-    }
-  };
+                const res = await fetch('/api/document/parse', {
+                    method: 'POST',
+                    body: fd,
+                });
 
-  return (
-    <div className="twin-form">
-      <div className="form-header">
-        <h2>Create Your Digital Twin</h2>
-        <p>Upload your data to train your personal AI agent</p>
-      </div>
+                if (!res.ok) throw new Error('Failed to parse document');
+                const data = await res.json();
+                cvText = data.text;
+                extractedData.bioParts.push(`CV Content: ${cvText.slice(0, 500)}...`);
+            }
 
-      {/* Domain Selector */}
-      <div className="domain-selector">
-        <label>Primary Goal</label>
-        <div className="domain-buttons">
-          {(['networking', 'events', 'dating'] as TwinDomain[]).map((domain) => (
-            <button
-              key={domain}
-              type="button"
-              className={`domain-btn ${formData.domain === domain ? 'active' : ''}`}
-              onClick={() => setFormData({ ...formData, domain })}
-            >
-              {getDomainIcon(domain)} {domain.charAt(0).toUpperCase() + domain.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+            // 3. Synthesize
+            setStatusMessage('Synthesizing Identity...');
 
-      {error && <div className="error-message">⚠️ {error}</div>}
+            const name = extractedData.name || formData.name || "Anonymous User";
+            const headline = extractedData.headline || "Digital Networker";
 
-      <form onSubmit={handleConnectSubmit} className="connect-form">
+            // Merge skills from all sources + CV text
+            const cvSkills = extractSkillsFromText(cvText);
+            const cvInterests = extractInterestsFromText(cvText);
 
-        {/* Source 1: LinkedIn */}
-        <div className="source-section">
-          <div className="section-header">
-            <span className="icon">🔗</span>
-            <h3>LinkedIn Profile</h3>
-          </div>
-          <div className="input-group">
-            <input
-              type="url"
-              value={formData.linkedinUrl}
-              onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-              placeholder="https://linkedin.com/in/yourprofile"
-              className="url-input"
-            />
-          </div>
-        </div>
+            const allSkills = unique([...extractedData.skills, ...cvSkills]).slice(0, 15);
+            const allInterests = unique([...extractedData.interests, ...cvInterests]).slice(0, 10);
 
-        <div className="divider">
-          <span>AND / OR</span>
-        </div>
+            onTwinCreated({
+                name,
+                headline,
+                skills: allSkills,
+                interests: allInterests,
+                domain: formData.domain,
+            });
 
-        {/* Source 2: CV Upload */}
-        <div className="source-section">
-          <div className="section-header">
-            <span className="icon">📄</span>
-            <h3>Resume / CV</h3>
-          </div>
-          <div
-            className={`file-drop-area ${cvFile ? 'has-file' : ''}`}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf,.doc,.docx"
-              hidden
-            />
-            {cvFile ? (
-              <div className="file-info">
-                <span className="filename">{cvFile.name}</span>
-                <span className="change-text">(Click to change)</span>
-              </div>
+        } catch (err: any) {
+            setError(err.message || 'An error occurred during processing.');
+            setIsProcessing(false);
+        }
+    };
+
+    return (
+        <div className="twin-form">
+            <div className="form-header">
+                <h2>Create Your Digital Twin</h2>
+                <p>Train your personal AI agent to represent you</p>
+            </div>
+
+            {/* Domain Selector */}
+            <div className="domain-selector">
+                <label>Primary Goal</label>
+                <div className="domain-buttons">
+                    {(['networking', 'events', 'dating'] as TwinDomain[]).map((domain) => (
+                        <button
+                            key={domain}
+                            type="button"
+                            className={`domain-btn ${formData.domain === domain ? 'active' : ''}`}
+                            onClick={() => setFormData({ ...formData, domain })}
+                        >
+                            {getDomainIcon(domain)} {domain.charAt(0).toUpperCase() + domain.slice(1)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Mode Selector Tabs */}
+            <div className="mode-tabs">
+                <button
+                    className={`mode-tab ${mode === 'upload' ? 'active' : ''}`}
+                    onClick={() => setMode('upload')}
+                >
+                    📤 Data Upload
+                </button>
+                <button
+                    className={`mode-tab ${mode === 'interview' ? 'active' : ''}`}
+                    onClick={() => setMode('interview')}
+                >
+                    🗣️ Voice Interview
+                </button>
+            </div>
+
+            {error && <div className="error-message">⚠️ {error}</div>}
+
+            {mode === 'interview' ? (
+                <div className="interview-container">
+                    <p className="interview-intro">
+                        Have a quick chat with your Twin. It will ask you about your background and interests to build your profile.
+                    </p>
+                    <TwinInterview
+                        onInterviewComplete={handleInterviewComplete}
+                        currentProfile={{ domain: formData.domain }}
+                    />
+                </div>
             ) : (
-              <div className="upload-prompt">
-                <span>Click to upload PDF or DOCX</span>
-              </div>
+                <form onSubmit={handleConnectSubmit} className="connect-form">
+
+                    {/* Source 1: Social Links (Multi) */}
+                    <div className="source-section">
+                        <div className="section-header">
+                            <span className="icon">🌐</span>
+                            <h3>Social Footprint</h3>
+                        </div>
+                        <div className="links-list">
+                            {socialLinks.map((link, idx) => (
+                                <div key={idx} className="input-group link-row">
+                                    <input
+                                        type="url"
+                                        value={link}
+                                        onChange={(e) => handleLinkChange(idx, e.target.value)}
+                                        placeholder="LinkedIn, Twitter, Instagram..."
+                                        className="url-input"
+                                    />
+                                    {socialLinks.length > 1 && (
+                                        <button type="button" className="remove-btn" onClick={() => removeLinkField(idx)}>×</button>
+                                    )}
+                                </div>
+                            ))}
+                            {socialLinks.length < 5 && (
+                                <button type="button" className="add-btn" onClick={addLinkField}>+ Add another source</button>
+                            )}
+                        </div>
+                        <p className="input-hint">We support LinkedIn, Twitter, Instagram, GitHub...</p>
+                    </div>
+
+                    <div className="divider">
+                        <span>AND / OR</span>
+                    </div>
+
+                    {/* Source 2: CV Upload */}
+                    <div className="source-section">
+                        <div className="section-header">
+                            <span className="icon">📄</span>
+                            <h3>Resume / CV</h3>
+                        </div>
+                        <div
+                            className={`file-drop-area ${cvFile ? 'has-file' : ''}`}
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept=".pdf,.doc,.docx"
+                                hidden
+                            />
+                            {cvFile ? (
+                                <div className="file-info">
+                                    <span className="filename">{cvFile.name}</span>
+                                    <span className="change-text">(Click to change)</span>
+                                </div>
+                            ) : (
+                                <div className="upload-prompt">
+                                    <span>Click to upload PDF or DOCX</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isProcessing || loading}
+                        className="submit-btn"
+                    >
+                        {isProcessing ? (
+                            <span className="processing-status">
+                                <span className="spinner">⚡</span> {statusMessage}
+                            </span>
+                        ) : (
+                            '🚀 Analyze & Create Twin'
+                        )}
+                    </button>
+
+                    <div className="privacy-shield">
+                        <span className="shield-icon">🛡️</span>
+                        <div className="shield-text">
+                            <strong>Privacy First</strong>
+                            <small>Data encrypted & stored on-device only</small>
+                        </div>
+                    </div>
+                </form>
             )}
-          </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={isProcessing || loading}
-          className="submit-btn"
-        >
-          {isProcessing ? (
-            <span className="processing-status">
-              <span className="spinner">⚡</span> {statusMessage}
-            </span>
-          ) : (
-            '🚀 Analyze & Create Twin'
-          )}
-        </button>
-
-        <p className="privacy-note">
-          🔒 Data is processed locally or via secure APIs. Your twin runs on your device.
-        </p>
-      </form>
-
-      <style jsx>{`
+            <style jsx>{`
                 .twin-form {
                     max-width: 520px;
                     margin: 0 auto;
@@ -277,7 +382,7 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                     color: rgba(255, 255, 255, 0.7);
                 }
                 .domain-selector {
-                    margin-bottom: 2rem;
+                    margin-bottom: 1.5rem;
                 }
                 .domain-selector label {
                     display: block;
@@ -303,6 +408,29 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                     background: rgba(102, 126, 234, 0.2);
                     border-color: #667eea;
                 }
+                .mode-tabs {
+                    display: flex;
+                    margin-bottom: 1.5rem;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .mode-tab {
+                    flex: 1;
+                    padding: 1rem;
+                    background: transparent;
+                    border: none;
+                    border-bottom: 2px solid transparent;
+                    color: rgba(255, 255, 255, 0.6);
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .mode-tab:hover {
+                    color: white;
+                }
+                .mode-tab.active {
+                    color: #667eea;
+                    border-bottom-color: #667eea;
+                }
                 .source-section {
                     background: rgba(255, 255, 255, 0.05);
                     padding: 1rem;
@@ -320,14 +448,51 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                     font-weight: 600;
                     margin: 0;
                 }
+                .input-group {
+                    margin-bottom: 0.5rem;
+                }
+                .link-row {
+                    display: flex;
+                    gap: 0.5rem;
+                }
                 .url-input {
-                    width: 100%;
+                    flex: 1;
                     padding: 0.875rem;
                     background: rgba(0, 0, 0, 0.2);
                     border: 1px solid rgba(255, 255, 255, 0.2);
                     border-radius: 8px;
                     color: white;
                 }
+                .remove-btn {
+                    padding: 0 0.75rem;
+                    background: rgba(239, 68, 68, 0.2);
+                    color: #fca5a5;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 1.25rem;
+                }
+                .add-btn {
+                    background: transparent;
+                    border: 1px dashed rgba(255, 255, 255, 0.3);
+                    color: rgba(255, 255, 255, 0.7);
+                    width: 100%;
+                    padding: 0.5rem;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 0.875rem;
+                    transition: all 0.2s;
+                }
+                .add-btn:hover {
+                    border-color: #667eea;
+                    color: white;
+                }
+                .input-hint {
+                    font-size: 0.75rem;
+                    color: rgba(255, 255, 255, 0.4);
+                    margin-top: 0.5rem;
+                }
+
                 .file-drop-area {
                     border: 2px dashed rgba(255, 255, 255, 0.2);
                     border-radius: 8px;
@@ -406,42 +571,47 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                     margin-bottom: 1rem;
                     font-size: 0.875rem;
                 }
-                .privacy-note {
-                    text-align: center;
+                .privacy-shield {
+                    margin-top: 1.5rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.75rem;
+                    background: rgba(16, 185, 129, 0.1);
+                    border: 1px solid rgba(16, 185, 129, 0.2);
+                    border-radius: 12px;
+                }
+                .shield-icon {
+                    font-size: 1.5rem;
+                }
+                .shield-text {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .shield-text strong {
+                    color: #34d399;
+                    font-size: 0.875rem;
+                }
+                .shield-text small {
+                    color: rgba(255, 255, 255, 0.6);
                     font-size: 0.75rem;
-                    color: rgba(255, 255, 255, 0.4);
-                    margin-top: 1rem;
+                }
+                .interview-intro {
+                    text-align: center;
+                    opacity: 0.8;
+                    font-size: 0.9rem;
+                    margin-bottom: 1rem;
                 }
             `}</style>
-    </div>
-  );
+        </div>
+    );
 }
 
 function getDomainIcon(domain: TwinDomain): string {
-  switch (domain) {
-    case 'networking': return '🤝';
-    case 'events': return '🎉';
-    case 'dating': return '💕';
-    default: return '👤';
-  }
-}
-
-// Helper functions (duplicated from previous implementation due to simplicity)
-// Ideally move to a shared utility
-function extractSkillsFromText(text: string): string[] {
-  const commonSkills = [
-    'JavaScript', 'TypeScript', 'Python', 'React', 'Node.js', 'AI', 'ML',
-    'Machine Learning', 'Data Science', 'Product Management', 'Agile',
-    'Scrum', 'AWS', 'Cloud', 'DevOps', 'Docker', 'Kubernetes', 'Design',
-    'UX', 'UI', 'Marketing', 'Sales', 'Strategy', 'Business', 'Leadership'
-  ];
-  return commonSkills.filter(s => text.toLowerCase().includes(s.toLowerCase()));
-}
-
-function extractInterestsFromText(text: string): string[] {
-  const commonInterests = [
-    'Startups', 'Innovation', 'Tech', 'Entrepreneurship', 'Sustainability',
-    'Climate', 'Health', 'Fintech', 'Gaming', 'Music', 'Travel', 'Sports'
-  ];
-  return commonInterests.filter(i => text.toLowerCase().includes(i.toLowerCase()));
+    switch (domain) {
+        case 'networking': return '🤝';
+        case 'events': return '🎉';
+        case 'dating': return '💕';
+        default: return '👤';
+    }
 }

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
+    let url = '';
     try {
-        const { url } = await request.json();
+        const body = await request.json();
+        url = body.url;
 
         if (!url) {
             return NextResponse.json(
