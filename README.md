@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Personal Digital Twin Network
+
+> "Your twin finds perfect people. You skip the small talk."
+
+Privacy-first PWA for AI-powered networking at events. Digital twins match attendees based on public profile data.
+
+## Features
+
+- 🤖 **Digital Twin Creation**: 30-second onboard from LinkedIn URL
+- 📱 **QR Event Join**: Scan QR to join event mesh
+- 🎯 **AI Matching**: Top 3 matches from 50 attendees instantly
+- 🔒 **Privacy-First**: All twin data on-device (IndexedDB)
+
+## Architecture
+
+Clean Architecture with SOLID principles:
+
+```
+src/
+├── domain/           # Entities, Interfaces (Business Rules)
+├── application/      # Use Cases (Application Logic)
+├── infrastructure/   # Supabase, Gemini, IndexedDB
+├── presentation/     # React Components, Hooks
+└── app/              # Next.js App Router
+```
+
+## Tech Stack
+
+- **Framework**: Next.js 14+ (App Router)
+- **Language**: TypeScript
+- **Database**: Supabase (events only, no profiles)
+- **AI**: Google Gemini Flash
+- **Storage**: IndexedDB (on-device twins)
+- **Testing**: Jest + Playwright
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- Supabase account
+- Google AI API key
+
+### Installation
 
 ```bash
+# Clone repo
+git clone https://github.com/YOUR_USERNAME/personal-twin-network.git
+cd personal-twin-network
+
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env.local
+# Edit .env.local with your keys
+
+# Run database migrations (in Supabase dashboard)
+# Copy contents of supabase/migrations/001_initial_schema.sql
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Testing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Unit tests
+npm run test:unit
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Integration tests
+npm run test:integration
 
-## Learn More
+# E2E tests
+npm run test:e2e
 
-To learn more about Next.js, take a look at the following resources:
+# Coverage report
+npm run test:coverage
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment (Railway)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Push to GitHub
+2. Connect repo to Railway
+3. Set environment variables in Railway dashboard
+4. Railway auto-deploys on push
 
-## Deploy on Vercel
+## Privacy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Zero server profiles**: Twin data stays on device
+- **Minimal database**: Only auth + event metadata
+- **GDPR compliant**: Delete twin deletes all data
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development Philosophy
+
+- **TDD**: Tests written before implementation
+- **Clean Architecture**: Uncle Bob's layers
+- **SOLID**: Single responsibility, dependency inversion
+- **Martin Fowler**: Refactoring patterns, clean code
+
+## License
+
+MIT
