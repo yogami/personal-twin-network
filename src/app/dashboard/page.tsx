@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { TwinStatusCard, PrivacyDashboard } from '@/presentation/components/TwinDashboard';
 import { MatchList } from '@/presentation/components/MatchCard';
 import { QRScanner, QRCodeGenerator } from '@/presentation/components/QRCode';
+import { PWAInstallBanner, OfflineBanner } from '@/presentation/components/PWABanners';
 import { Twin } from '@/domain/entities/Twin';
 import { Match } from '@/domain/entities/Match';
 import Link from 'next/link';
@@ -165,6 +166,10 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="dashboard-main">
+        {/* PWA Install and Offline Banners */}
+        <OfflineBanner />
+        <PWAInstallBanner />
+
         {/* Twin Status */}
         <section className="twin-section">
           <TwinStatusCard twin={twin} />
