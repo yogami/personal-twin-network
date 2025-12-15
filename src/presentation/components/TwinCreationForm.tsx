@@ -2,11 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { TwinDomain } from '@/domain/entities/Twin';
-import {
-    extractLinkedInProfile,
-    isValidLinkedInUrl,
-    ExtractedProfile
-} from '@/application/services/LinkedInExtractor';
+// Removed unused imports
 import { TwinInterview } from './TwinInterview';
 
 interface TwinFormData {
@@ -106,7 +102,7 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
         }
     };
 
-    const handleInterviewComplete = (extractedData: any) => {
+    const handleInterviewComplete = (extractedData: { name?: string; headline?: string; skills?: string[]; interests?: string[] }) => {
         onTwinCreated({
             name: extractedData.name || "Anonymous",
             headline: extractedData.headline || "Digital Twin User",
@@ -131,12 +127,18 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
         setIsProcessing(true);
         setStatusMessage('Initializing Twin Brain...');
 
-        let extractedData: any = {
+        const extractedData: {
+            name: string;
+            headline: string;
+            skills: string[];
+            interests: string[];
+            bioParts: string[];
+        } = {
             name: '',
             headline: '',
-            skills: [] as string[],
-            interests: [] as string[],
-            bioParts: [] as string[]
+            skills: [],
+            interests: [],
+            bioParts: []
         };
         let cvText = '';
 
@@ -209,8 +211,8 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                 domain: formData.domain,
             });
 
-        } catch (err: any) {
-            setError(err.message || 'An error occurred during processing.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'An error occurred during processing.');
             setIsProcessing(false);
         }
     };

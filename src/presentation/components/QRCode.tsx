@@ -4,33 +4,33 @@ import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface QRCodeGeneratorProps {
-    eventId: string;
-    eventName: string;
-    size?: number;
+  eventId: string;
+  eventName: string;
+  size?: number;
 }
 
 /**
  * QRCodeGenerator - Creates scannable QR codes for event joining
  */
 export function QRCodeGenerator({ eventId, eventName, size = 200 }: QRCodeGeneratorProps) {
-    const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/event/${eventId}/join`;
+  const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/event/${eventId}/join`;
 
-    return (
-        <div className="qr-generator">
-            <div className="qr-container">
-                <QRCodeSVG
-                    value={qrValue}
-                    size={size}
-                    level="H"
-                    includeMargin
-                    bgColor="#ffffff"
-                    fgColor="#1a1a2e"
-                />
-            </div>
-            <p className="qr-label">{eventName}</p>
-            <p className="qr-subtitle">Scan to join event</p>
+  return (
+    <div className="qr-generator">
+      <div className="qr-container">
+        <QRCodeSVG
+          value={qrValue}
+          size={size}
+          level="H"
+          includeMargin
+          bgColor="#ffffff"
+          fgColor="#1a1a2e"
+        />
+      </div>
+      <p className="qr-label">{eventName}</p>
+      <p className="qr-subtitle">Scan to join event</p>
 
-            <style jsx>{`
+      <style jsx>{`
         .qr-generator {
           display: flex;
           flex-direction: column;
@@ -57,62 +57,62 @@ export function QRCodeGenerator({ eventId, eventName, size = 200 }: QRCodeGenera
           color: rgba(255, 255, 255, 0.8);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 interface QRScannerProps {
-    onScan: (eventId: string) => void;
-    onError?: (error: string) => void;
+  onScan: (eventId: string) => void;
+  onError?: (error: string) => void;
 }
 
 /**
  * QRScanner - Manual QR code input for demo (camera scanning in future)
  */
 export function QRScanner({ onScan, onError }: QRScannerProps) {
-    const [eventCode, setEventCode] = useState('');
-    const [isScanning, setIsScanning] = useState(false);
+  const [eventCode, setEventCode] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!eventCode.trim()) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventCode.trim()) return;
 
-        setIsScanning(true);
-        try {
-            // Extract event ID from URL or code
-            const eventId = extractEventIdFromCode(eventCode);
-            if (eventId) {
-                onScan(eventId);
-            } else {
-                onError?.('Invalid event code');
-            }
-        } catch (err) {
-            onError?.('Failed to process code');
-        } finally {
-            setIsScanning(false);
-        }
-    };
+    setIsScanning(true);
+    try {
+      // Extract event ID from URL or code
+      const eventId = extractEventIdFromCode(eventCode);
+      if (eventId) {
+        onScan(eventId);
+      } else {
+        onError?.('Invalid event code');
+      }
+    } catch {
+      onError?.('Failed to process code');
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
-    return (
-        <div className="qr-scanner">
-            <div className="scanner-icon">📸</div>
-            <h3>Join Event</h3>
-            <p>Enter event code or paste QR link</p>
+  return (
+    <div className="qr-scanner">
+      <div className="scanner-icon">📸</div>
+      <h3>Join Event</h3>
+      <p>Enter event code or paste QR link</p>
 
-            <form onSubmit={handleSubmit}>
-                <input
-                    type="text"
-                    value={eventCode}
-                    onChange={(e) => setEventCode(e.target.value)}
-                    placeholder="Event code or URL..."
-                    className="code-input"
-                />
-                <button type="submit" disabled={isScanning} className="scan-button">
-                    {isScanning ? 'Joining...' : 'Join Event'}
-                </button>
-            </form>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={eventCode}
+          onChange={(e) => setEventCode(e.target.value)}
+          placeholder="Event code or URL..."
+          className="code-input"
+        />
+        <button type="submit" disabled={isScanning} className="scan-button">
+          {isScanning ? 'Joining...' : 'Join Event'}
+        </button>
+      </form>
 
-            <style jsx>{`
+      <style jsx>{`
         .qr-scanner {
           padding: 2rem;
           background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -170,31 +170,31 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
           cursor: not-allowed;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 /**
  * Extracts event ID from QR code URL or direct code
  */
 function extractEventIdFromCode(code: string): string | null {
-    // If it's a URL, extract the event ID
-    const urlMatch = code.match(/\/event\/([a-zA-Z0-9-]+)/);
-    if (urlMatch) {
-        return urlMatch[1];
-    }
+  // If it's a URL, extract the event ID
+  const urlMatch = code.match(/\/event\/([a-zA-Z0-9-]+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
 
-    // If it's a UUID format, use directly
-    const uuidMatch = code.match(/^[a-f0-9-]{36}$/i);
-    if (uuidMatch) {
-        return code;
-    }
+  // If it's a UUID format, use directly
+  const uuidMatch = code.match(/^[a-f0-9-]{36}$/i);
+  if (uuidMatch) {
+    return code;
+  }
 
-    // If it's a short code format (event:id:timestamp)
-    const shortMatch = code.match(/^event:([a-f0-9-]+):/i);
-    if (shortMatch) {
-        return shortMatch[1];
-    }
+  // If it's a short code format (event:id:timestamp)
+  const shortMatch = code.match(/^event:([a-f0-9-]+):/i);
+  if (shortMatch) {
+    return shortMatch[1];
+  }
 
-    return null;
+  return null;
 }

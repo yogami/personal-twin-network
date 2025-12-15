@@ -167,7 +167,7 @@ self.addEventListener('push', (event) => {
         if (event.data) {
             data = event.data.json();
         }
-    } catch (e) {
+    } catch {
         console.warn('[SW] Could not parse push data');
     }
 

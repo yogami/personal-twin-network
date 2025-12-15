@@ -30,18 +30,21 @@ test.describe('Personal Twin Network E2E', () => {
 
     test('dashboard shows match cards', async ({ page }) => {
         await page.goto('/dashboard');
+        console.log('Testing URL:', page.url());
 
-        // Wait for matches to load
-        await page.waitForSelector('.match-card, [class*="match"]', { timeout: 5000 }).catch(() => { });
+        // Wait for matches to load (increase timeout for prod)
+        await page.waitForSelector('.match-card, [class*="match"]', { timeout: 10000 }).catch(() => {
+            console.log('Timed out waiting for matches');
+        });
 
         // Check for demo matches
-        await expect(page.locator('text=Anna').or(page.locator('text=Max'))).toBeVisible();
+        await expect(page.locator('text=Anna').or(page.locator('text=Max')).first()).toBeVisible();
     });
 
     test('QR scanner tab switches', async ({ page }) => {
         await page.goto('/dashboard');
         await page.getByRole('button', { name: /Scan QR/i }).click();
-        await expect(page.locator('text=Join Event')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Join Event' })).toBeVisible();
     });
 
     test('privacy dashboard shows stats', async ({ page }) => {

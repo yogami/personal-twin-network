@@ -261,7 +261,7 @@ export class TwinNegotiator {
         const states = this.provider.awareness.getStates();
         const currentPeerIds = new Set<string>();
 
-        states.forEach((state, clientId) => {
+        states.forEach((state) => {
             if (!state || !state.twinId || state.twinId === this.myTwinId) return;
 
             const peerId = state.twinId as string;

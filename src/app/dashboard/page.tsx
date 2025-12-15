@@ -76,45 +76,12 @@ export default function DashboardPage() {
   // PWA and Twin Brain hooks
   const {
     isInstalled,
-    isOnline,
+    // isOnline, // Removed unused
     swReady,
     twinBrainActive,
     activateTwinBrain,
     lastSyncTime,
   } = usePWA();
-
-  // Initialize edge matching and load twin
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Initialize edge matching service
-        initializeEdgeMatching();
-
-        // Try to load twin from local brain
-        const brain = getTwinBrain();
-
-        // For demo, we use demo twin (in production, unlock with passphrase)
-        setTwin(demoTwin);
-
-        // Activate twin in service worker for background operation
-        if (swReady) {
-          await activateTwinBrain(demoTwin);
-        }
-
-        // Perform initial local matching
-        await performEdgeMatching(demoTwin);
-
-      } catch (error) {
-        console.error('Failed to initialize:', error);
-        // Fallback to demo data
-        setTwin(demoTwin);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeApp();
-  }, [swReady, activateTwinBrain]);
 
   // Perform edge-only matching
   const performEdgeMatching = useCallback(async (userTwin: Twin) => {
@@ -143,6 +110,41 @@ export default function DashboardPage() {
       setIsProcessing(false);
     }
   }, []);
+
+  // Initialize edge matching and load twin
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Initialize edge matching service
+        initializeEdgeMatching();
+
+        // Try to load twin from local brain
+        getTwinBrain();
+
+        // For demo, we use demo twin (in production, unlock with passphrase)
+        setTwin(demoTwin);
+
+        // Activate twin in service worker for background operation
+        if (swReady) {
+          await activateTwinBrain(demoTwin);
+        }
+
+        // Perform initial local matching
+        await performEdgeMatching(demoTwin);
+
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        // Fallback to demo data
+        setTwin(demoTwin);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, [swReady, activateTwinBrain, performEdgeMatching]);
+
+
 
   // Handle event join via QR scan
   const handleEventJoin = useCallback(async (eventId: string) => {

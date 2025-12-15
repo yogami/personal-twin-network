@@ -1,0 +1,247 @@
+
+> personal-twin-network@0.1.0 lint
+> eslint
+
+
+/Users/yamijala/gitprojects/personal-twin-network/__mocks__/uuid.ts
+  4:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/yamijala/gitprojects/personal-twin-network/debug-prod.js
+  2:22  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+/Users/yamijala/gitprojects/personal-twin-network/public/sw.js
+  170:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/api/document/parse/route.ts
+   2:1   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  22:13  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  23:25  error  A `require()` style import is forbidden                                                                              @typescript-eslint/no-require-imports
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/api/events/route.ts
+  7:37  warning  'EventRow' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/api/linkedin/extract/route.ts
+  62:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/api/twin/interview/route.ts
+  18:13  error  'profileContext' is never reassigned. Use 'const' instead       prefer-const
+  19:13  error  'conversationContext' is never reassigned. Use 'const' instead  prefer-const
+  20:29  error  Unexpected any. Specify a different type                        @typescript-eslint/no-explicit-any
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/dashboard/page.tsx
+   79:5   warning  'isOnline' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+   94:15  warning  'brain' is assigned a value but never used                                                                              @typescript-eslint/no-unused-vars
+  117:6   warning  React Hook useEffect has a missing dependency: 'performEdgeMatching'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/demo/page.tsx
+  52:58  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/yamijala/gitprojects/personal-twin-network/src/app/page.tsx
+  20:10  warning  'isInitializing' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/application/services/LinkedInExtractor.ts
+  76:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/infrastructure/ai/GeminiService.ts
+  27:43  warning  'eventContext' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/infrastructure/storage/IndexedDBTwinStore.ts
+  71:31  warning  'eventIds' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/lib/social-scrapers.ts
+    3:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   10:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yamijala/gitprojects/personal-twin-network/src/lib/twin-negotiation.ts
+  264:32  warning  'clientId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/PWABanners.tsx
+  6:50  warning  'isOnline' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/PrivacyIndicator.tsx
+  40:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/PrivacyIndicator.tsx:40:13
+  38 |     useEffect(() => {
+  39 |         if (isEdgeMatching) {
+> 40 |             setRecentActivity(prev => [
+     |             ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  41 |                 ...prev.slice(-4),
+  42 |                 {
+  43 |                     timestamp: Date.now(),  react-hooks/set-state-in-effect
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/QRCode.tsx
+  89:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinCreationForm.tsx
+    6:5   warning  'extractLinkedInProfile' is defined but never used        @typescript-eslint/no-unused-vars
+    7:5   warning  'isValidLinkedInUrl' is defined but never used            @typescript-eslint/no-unused-vars
+    8:5   warning  'ExtractedProfile' is defined but never used              @typescript-eslint/no-unused-vars
+  109:53  error    Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+  134:13  error    'extractedData' is never reassigned. Use 'const' instead  prefer-const
+  134:28  error    Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+  212:23  error    Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinInterview.tsx
+   40:22  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+   55:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+   56:22  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  102:25  error    Error: Cannot access variable before it is declared
+
+`handleUserAnswer` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinInterview.tsx:102:25
+  100 |                     // If we have a finalized transcript, process it
+  101 |                     if (transcript.trim().length > 0) {
+> 102 |                         handleUserAnswer(transcript);
+      |                         ^^^^^^^^^^^^^^^^ `handleUserAnswer` accessed before it is declared
+  103 |                     }
+  104 |                 };
+  105 |
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinInterview.tsx:176:5
+  174 |     };
+  175 |
+> 176 |     const handleUserAnswer = async (answer: string) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 177 |         // 1. Add to history
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 178 |         const newHistory = [...history, { role: 'twin' as const, text: twinMessage }, { role: 'user' as const, text: answer }];
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 207 |         }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 208 |     };
+      | ^^^^^^^ `handleUserAnswer` is declared here
+  209 |
+  210 |     // Initial greeting
+  211 |     useEffect(() => {                       react-hooks/immutability
+  109:8   warning  React Hook useEffect has a missing dependency: 'handleUserAnswer'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/exhaustive-deps
+  126:8   warning  React Hook useEffect has a missing dependency: 'handleUserAnswer'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/exhaustive-deps
+  149:30  error    Error: Cannot access variable before it is declared
+
+`startListening` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinInterview.tsx:149:30
+  147 |             // Auto-start listening after speaking finishes?
+  148 |             // Let's make it manual for now to avoid feedback loops, or add a delay
+> 149 |             setTimeout(() => startListening(), 500);
+      |                              ^^^^^^^^^^^^^^ `startListening` accessed before it is declared
+  150 |         };
+  151 |
+  152 |         setTwinMessage(text);
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinInterview.tsx:156:5
+  154 |     }, []);
+  155 |
+> 156 |     const startListening = () => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 157 |         if (recognitionRef.current && !isListening) {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 158 |             setTranscript('');
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 166 |         }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 167 |     };
+      | ^^^^^^^ `startListening` is declared here
+  168 |
+  169 |     const stopListening = () => {
+  170 |         if (recognitionRef.current && isListening) {  react-hooks/immutability
+  154:8   warning  React Hook useCallback has a missing dependency: 'startListening'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/exhaustive-deps
+  217:8   warning  React Hook useEffect has missing dependencies: 'speak' and 'twinMessage'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinPersonality.tsx
+  38:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/components/TwinPersonality.tsx:38:13
+  36 |     useEffect(() => {
+  37 |         if (!isActive) {
+> 38 |             setMessage("I'm resting. Activate me to start finding matches!");
+     |             ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |             setMood('idle');
+  40 |             return;
+  41 |         }  react-hooks/set-state-in-effect
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/hooks/usePWA.ts
+  100:25  error    Error: Cannot access variable before it is declared
+
+`sendSWMessage` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/hooks/usePWA.ts:100:25
+   98 |                         setSwReady(true);
+   99 |                         // Get initial status
+> 100 |                         sendSWMessage({ type: 'GET_STATUS' });
+      |                         ^^^^^^^^^^^^^ `sendSWMessage` accessed before it is declared
+  101 |                     });
+  102 |                 })
+  103 |                 .catch((error) => {
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/hooks/usePWA.ts:175:5
+  173 |     // ========================================================================
+  174 |
+> 175 |     const sendSWMessage = useCallback(async (message: { type: string; payload?: unknown }) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 176 |         const controller = navigator.serviceWorker?.controller;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 177 |         if (!controller) {
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 193 |         });
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 194 |     }, []);
+      | ^^^^^^^^^^^^ `sendSWMessage` is declared here
+  195 |
+  196 |     // ========================================================================
+  197 |     // Install  react-hooks/immutability
+  108:65  error    Error: Cannot access variable before it is declared
+
+`handleSWMessage` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/hooks/usePWA.ts:108:65
+  106 |
+  107 |             // Listen for SW messages
+> 108 |             navigator.serviceWorker.addEventListener('message', handleSWMessage);
+      |                                                                 ^^^^^^^^^^^^^^^ `handleSWMessage` accessed before it is declared
+  109 |         }
+  110 |
+  111 |         // Listen for install prompt
+
+/Users/yamijala/gitprojects/personal-twin-network/src/presentation/hooks/usePWA.ts:145:5
+  143 |     // ========================================================================
+  144 |
+> 145 |     const handleSWMessage = useCallback((event: MessageEvent<TwinBrainMessage>) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 146 |         const { type, ...data } = event.data;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 147 |         console.log('[usePWA] SW message:', type, data);
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 168 |         }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 169 |     }, []);
+      | ^^^^^^^^^^^^ `handleSWMessage` is declared here
+  170 |
+  171 |     // ========================================================================
+  172 |     // Send Message to Service Worker                                                            react-hooks/immutability
+  139:8   warning  React Hook useEffect has missing dependencies: 'handleSWMessage' and 'sendSWMessage'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/exhaustive-deps
+
+/Users/yamijala/gitprojects/personal-twin-network/tests/unit/CreateTwinUseCase.test.ts
+  7:16  warning  'TwinDomain' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 47 problems (25 errors, 22 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

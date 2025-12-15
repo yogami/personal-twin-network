@@ -76,12 +76,68 @@ export function usePWA(): UsePWAResult {
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
     // ========================================================================
+    // Service Worker Message Handler (Hoisted)
+    // ========================================================================
+
+    const handleSWMessage = useCallback((event: MessageEvent<TwinBrainMessage>) => {
+        const { type, ...data } = event.data;
+        console.log('[usePWA] SW message:', type, data);
+
+        switch (type) {
+            case 'STATUS':
+                setTwinBrainActive(data.twinBrainActive ?? false);
+                if (data.lastMatchTime) {
+                    setLastSyncTime(new Date(data.lastMatchTime));
+                }
+                break;
+
+            case 'TWIN_ACTIVATED':
+                setTwinBrainActive(data.success ?? false);
+                break;
+
+            case 'TWIN_DEACTIVATED':
+                setTwinBrainActive(false);
+                break;
+
+            case 'SYNC_COMPLETE':
+                setLastSyncTime(new Date());
+                break;
+        }
+    }, []);
+
+    // ========================================================================
+    // Send Message to Service Worker (Hoisted)
+    // ========================================================================
+
+    const sendSWMessage = useCallback(async (message: { type: string; payload?: unknown }) => {
+        const controller = navigator.serviceWorker?.controller;
+        if (!controller) {
+            console.warn('[usePWA] No active SW controller');
+            return null;
+        }
+
+        return new Promise((resolve, reject) => {
+            const messageChannel = new MessageChannel();
+
+            messageChannel.port1.onmessage = (event) => {
+                resolve(event.data);
+            };
+
+            controller.postMessage(message, [messageChannel.port2]);
+
+            // Timeout after 10 seconds
+            setTimeout(() => reject(new Error('SW message timeout')), 10000);
+        });
+    }, []);
+
+    // ========================================================================
     // Initialize
     // ========================================================================
 
     useEffect(() => {
         // Check if already installed
         if (window.matchMedia('(display-mode: standalone)').matches) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsInstalled(true);
         }
 
@@ -136,62 +192,7 @@ export function usePWA(): UsePWAResult {
                 navigator.serviceWorker.removeEventListener('message', handleSWMessage);
             }
         };
-    }, []);
-
-    // ========================================================================
-    // Service Worker Message Handler
-    // ========================================================================
-
-    const handleSWMessage = useCallback((event: MessageEvent<TwinBrainMessage>) => {
-        const { type, ...data } = event.data;
-        console.log('[usePWA] SW message:', type, data);
-
-        switch (type) {
-            case 'STATUS':
-                setTwinBrainActive(data.twinBrainActive ?? false);
-                if (data.lastMatchTime) {
-                    setLastSyncTime(new Date(data.lastMatchTime));
-                }
-                break;
-
-            case 'TWIN_ACTIVATED':
-                setTwinBrainActive(data.success ?? false);
-                break;
-
-            case 'TWIN_DEACTIVATED':
-                setTwinBrainActive(false);
-                break;
-
-            case 'SYNC_COMPLETE':
-                setLastSyncTime(new Date());
-                break;
-        }
-    }, []);
-
-    // ========================================================================
-    // Send Message to Service Worker
-    // ========================================================================
-
-    const sendSWMessage = useCallback(async (message: { type: string; payload?: unknown }) => {
-        const controller = navigator.serviceWorker?.controller;
-        if (!controller) {
-            console.warn('[usePWA] No active SW controller');
-            return null;
-        }
-
-        return new Promise((resolve, reject) => {
-            const messageChannel = new MessageChannel();
-
-            messageChannel.port1.onmessage = (event) => {
-                resolve(event.data);
-            };
-
-            controller.postMessage(message, [messageChannel.port2]);
-
-            // Timeout after 10 seconds
-            setTimeout(() => reject(new Error('SW message timeout')), 10000);
-        });
-    }, []);
+    }, [handleSWMessage, sendSWMessage]);
 
     // ========================================================================
     // Install

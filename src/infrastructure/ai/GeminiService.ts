@@ -24,7 +24,7 @@ export class GeminiService implements IMatchingService {
     }
 
     async findMatches(request: MatchRequest): Promise<Match[]> {
-        const { userTwin, candidateTwins, eventContext } = request;
+        const { userTwin, candidateTwins } = request;
         const matches: Match[] = [];
 
         for (const candidate of candidateTwins) {

@@ -1,5 +1,6 @@
 
 interface ApifyResult {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
 
@@ -7,6 +8,7 @@ interface ApifyResult {
  * Generic helper to run an Apify Actor and wait for results.
  * We use the REST API to avoid adding heavy npm dependencies.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function runApifyActor(actorId: string, input: any, token: string): Promise<ApifyResult | null> {
     try {
         // 1. Start the Actor
@@ -106,6 +108,7 @@ export async function scrapeLinkedIn(url: string, token: string) {
         name: raw.fullName || `${raw.firstName} ${raw.lastName}`,
         headline: raw.headline,
         bio: raw.summary,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         skills: raw.skills?.map((s: any) => s.name) || [],
         interests: []
     };

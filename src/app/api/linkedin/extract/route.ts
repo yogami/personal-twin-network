@@ -47,6 +47,10 @@ export async function POST(request: Request) {
 
         if (!response.ok) {
             console.error(`RapidAPI error: ${response.status} ${response.statusText}`);
+            // Attempt to parse error response if available
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const error = await response.json() as any;
+            console.error('RapidAPI detailed error:', error);
             return NextResponse.json(getMockProfile(url));
         }
 
@@ -59,6 +63,7 @@ export async function POST(request: Request) {
             headline: data.headline || data.job_title || "",
             // Handle skills: could be array of strings or objects
             skills: Array.isArray(data.skills)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ? data.skills.slice(0, 10).map((s: any) => typeof s === 'string' ? s : s.name || "")
                 : [],
             interests: data.interests || [],

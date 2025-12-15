@@ -4,68 +4,68 @@ import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 
 export default function DemoPage() {
-    const productionUrl = 'https://personal-twin-network-production.up.railway.app';
+  const productionUrl = 'https://personal-twin-network-production.up.railway.app';
 
-    return (
-        <div className="demo-page">
-            <main className="content">
-                <div className="header">
-                    <Link href="/" className="logo">
-                        ✨ Twin Network
-                    </Link>
-                    <div className="badge">Hybrid Phone Twin</div>
-                </div>
+  return (
+    <div className="demo-page">
+      <main className="content">
+        <div className="header">
+          <Link href="/" className="logo">
+            ✨ Twin Network
+          </Link>
+          <div className="badge">Hybrid Phone Twin</div>
+        </div>
 
-                <div className="hero">
-                    <h1>Activate Your Digital Twin</h1>
-                    <p className="subtitle">
-                        An AI processing node that lives on your phone.<br />
-                        Finds perfect professional matches. Zero server data.
-                    </p>
-                </div>
+        <div className="hero">
+          <h1>Activate Your Digital Twin</h1>
+          <p className="subtitle">
+            An AI processing node that lives on your phone.<br />
+            Finds perfect professional matches. Zero server data.
+          </p>
+        </div>
 
-                <div className="qr-section">
-                    <div className="qr-card">
-                        <div className="qr-wrapper">
-                            <QRCodeSVG
-                                value={productionUrl}
-                                size={250}
-                                level="H"
-                                includeMargin
-                                bgColor="#ffffff"
-                                fgColor="#1a1a2e"
-                            />
-                        </div>
-                        <p className="scan-instruction">Scan with your phone camera</p>
-                    </div>
-                </div>
+        <div className="qr-section">
+          <div className="qr-card">
+            <div className="qr-wrapper">
+              <QRCodeSVG
+                value={productionUrl}
+                size={250}
+                level="H"
+                includeMargin
+                bgColor="#ffffff"
+                fgColor="#1a1a2e"
+              />
+            </div>
+            <p className="scan-instruction">Scan with your phone camera</p>
+          </div>
+        </div>
 
-                <div className="features-grid">
-                    <div className="feature">
-                        <span className="icon">🔒</span>
-                        <h3>On-Device Brain</h3>
-                        <p>Your data is encrypted and stored locally. No cloud profile database.</p>
-                    </div>
-                    <div className="feature">
-                        <span className="icon">⚡</span>
-                        <h3>Edge Matching</h3>
-                        <p>AI matching runs on your phone's processor using Gemini Nano/Flash.</p>
-                    </div>
-                    <div className="feature">
-                        <span className="icon">🤝</span>
-                        <h3>P2P Negotiation</h3>
-                        <p>Twins talk directly to each other to negotiate introductions.</p>
-                    </div>
-                </div>
+        <div className="features-grid">
+          <div className="feature">
+            <span className="icon">🔒</span>
+            <h3>On-Device Brain</h3>
+            <p>Your data is encrypted and stored locally. No cloud profile database.</p>
+          </div>
+          <div className="feature">
+            <span className="icon">⚡</span>
+            <h3>Edge Matching</h3>
+            <p>AI matching runs on your phone&apos;s processor using Gemini Nano/Flash.</p>
+          </div>
+          <div className="feature">
+            <span className="icon">🤝</span>
+            <h3>P2P Negotiation</h3>
+            <p>Twins talk directly to each other to negotiate introductions.</p>
+          </div>
+        </div>
 
-                <div className="footer-link">
-                    <a href={productionUrl} target="_blank" rel="noopener noreferrer">
-                        Open in Browser
-                    </a>
-                </div>
-            </main>
+        <div className="footer-link">
+          <a href={productionUrl} target="_blank" rel="noopener noreferrer">
+            Open in Browser
+          </a>
+        </div>
+      </main>
 
-            <style jsx>{`
+      <style jsx>{`
         .demo-page {
           min-height: 100vh;
           background: #0a0a0f;
@@ -196,6 +196,6 @@ export default function DemoPage() {
             font-size: 0.9rem;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

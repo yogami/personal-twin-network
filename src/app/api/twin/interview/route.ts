@@ -15,9 +15,9 @@ export async function POST(request: Request) {
         // Safety: If history is just the twin's greeting, the last user message might be undefined if we aren't careful?
         // Actually, the client sends [Twin, User, Twin...]. If User just spoke, history ends with User.
 
-        let profileContext = "Current Known Profile:\n" + JSON.stringify(currentProfile || {}, null, 2);
-        let conversationContext = "Conversation History:\n" +
-            history.map((h: any) => `${h.role}: ${h.text}`).join('\n');
+        const profileContext = "Current Known Profile:\n" + JSON.stringify(currentProfile || {}, null, 2);
+        const conversationContext = "Conversation History:\n" +
+            history.map((h: { role: string; text: string }) => `${h.role}: ${h.text}`).join('\n');
 
         // 2. Prompt Gemini - THE UNCONVENTIONAL PERSONALITY
         // We want to extract deep info, not just "I am a coder".

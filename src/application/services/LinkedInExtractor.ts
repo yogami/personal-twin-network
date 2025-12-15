@@ -73,7 +73,7 @@ export async function extractLinkedInProfile(url: string): Promise<ExtractionRes
                 linkedinUrl: normalizedUrl,
             },
         };
-    } catch (error) {
+    } catch {
         return {
             success: false,
             error: 'Network error - try pasting your bio manually',

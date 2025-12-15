@@ -37,6 +37,7 @@ export function PrivacyIndicator({
     // Track network activity (demo simulation)
     useEffect(() => {
         if (isEdgeMatching) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setRecentActivity(prev => [
                 ...prev.slice(-4),
                 {

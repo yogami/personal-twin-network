@@ -4,7 +4,7 @@
 
 import { CreateTwinUseCase, CreateTwinInput } from '@/application/use-cases/CreateTwinUseCase';
 import { ITwinRepository } from '@/domain/interfaces/ITwinRepository';
-import { Twin, TwinDomain } from '@/domain/entities/Twin';
+import { Twin } from '@/domain/entities/Twin';
 
 describe('CreateTwinUseCase', () => {
     let mockTwinRepository: jest.Mocked<ITwinRepository>;

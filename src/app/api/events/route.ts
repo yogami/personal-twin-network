@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createEvent, getAllEvents, EventRow } from '@/infrastructure/database/NeonClient';
+import { createEvent, getAllEvents } from '@/infrastructure/database/NeonClient';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET() {

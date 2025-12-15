@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-// @ts-ignore
-// const pdf = require('pdf-parse'); // Moved inside
+// @ts-expect-error pdf-parse is not typed
+import pdf from 'pdf-parse';
 import * as mammoth from 'mammoth';
 
 export async function POST(request: Request) {
@@ -19,8 +19,6 @@ export async function POST(request: Request) {
         let text = '';
 
         if (file.type === 'application/pdf') {
-            // @ts-ignore
-            const pdf = require('pdf-parse');
             const data = await pdf(buffer);
             text = data.text;
         } else if (

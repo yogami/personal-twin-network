@@ -68,6 +68,7 @@ export class IndexedDBTwinStore implements ITwinRepository {
     async findByEventId(eventId: string): Promise<Twin[]> {
         const db = await this.dbPromise;
         const results = await db.getAllFromIndex('twins', 'by-eventId', eventId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         return results.map(({ eventIds, ...twin }) => twin);
     }
 

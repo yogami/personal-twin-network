@@ -35,6 +35,7 @@ export function TwinPersonality({
     // Generate dynamic messages based on state
     useEffect(() => {
         if (!isActive) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMessage("I'm resting. Activate me to start finding matches!");
             setMood('idle');
             return;

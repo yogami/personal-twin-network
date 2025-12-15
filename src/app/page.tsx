@@ -17,7 +17,6 @@ interface TwinProfile {
 export default function Home() {
   const [twin, setTwin] = useState<TwinProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
 
   // Check for existing twin on load
   useEffect(() => {
@@ -43,7 +42,7 @@ export default function Home() {
       } catch (e) {
         console.error("Failed to load local twin", e);
       } finally {
-        setIsInitializing(false);
+        // cleanup
       }
     };
 

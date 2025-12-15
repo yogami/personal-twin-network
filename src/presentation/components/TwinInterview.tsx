@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-// import { generateGeminiResponse } from '@/lib/twin-brain'; // Removed unused import
 
 // ============================================================================
-// Web Speech API Types (since they might not be in standard TS lib yet)
+// Web Speech API Types
 // ============================================================================
 interface SpeechRecognitionEvent extends Event {
     results: SpeechRecognitionResultList;
@@ -37,7 +36,7 @@ interface SpeechRecognition extends EventTarget {
     stop(): void;
     abort(): void;
     onresult: (event: SpeechRecognitionEvent) => void;
-    onerror: (event: any) => void;
+    onerror: (event: Event) => void;
     onend: () => void;
 }
 
@@ -52,7 +51,9 @@ declare global {
 // Props
 // ============================================================================
 interface TwinInterviewProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onInterviewComplete: (extractedData: any) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     currentProfile?: any;
 }
 
@@ -71,8 +72,92 @@ export function TwinInterview({ onInterviewComplete, currentProfile }: TwinInter
 
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const synthesisRef = useRef<SpeechSynthesis | null>(null);
+    const transcriptRef = useRef('');
 
-    // Initialize Speech APIs
+    // Keep transcript ref in sync
+    useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
+
+    // 1. Define Listening Controls (Hoist above speak)
+    const startListening = useCallback(() => {
+        if (recognitionRef.current && !isListening) {
+            setTranscript('');
+            transcriptRef.current = '';
+            try {
+                recognitionRef.current.start();
+                setIsListening(true);
+            } catch (e) {
+                console.error("Speech recognition start failed", e);
+            }
+        }
+    }, [isListening]);
+
+    const stopListening = useCallback(() => {
+        if (recognitionRef.current && isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        }
+    }, [isListening]);
+
+    // 2. Define Speak (depends on startListening)
+    const speak = useCallback((text: string) => {
+        if (!synthesisRef.current) return;
+
+        // Cancel any ongoing speech
+        synthesisRef.current.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        // Try to find a nice voice
+        const voices = synthesisRef.current.getVoices();
+        const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Samantha'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => {
+            setIsSpeaking(false);
+            // Auto-start listening after speaking finishes
+            setTimeout(() => startListening(), 500);
+        };
+
+        setTwinMessage(text);
+        synthesisRef.current.speak(utterance);
+    }, [startListening]);
+
+    // 3. Define Answer Handler (depends on speak)
+    const handleUserAnswer = useCallback(async (answer: string) => {
+        // Add to history
+        const newHistory = [...history, { role: 'twin' as const, text: twinMessage }, { role: 'user' as const, text: answer }];
+        setHistory(newHistory);
+
+        // Call Twin Brain (LLM) to process answer & get next question
+        try {
+            const response = await fetch('/api/twin/interview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    history: newHistory,
+                    currentProfile: currentProfile
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.isComplete) {
+                speak("Thanks! I think I have enough to build your twin now.");
+                onInterviewComplete(data.extractedProfile);
+            } else {
+                speak(data.nextQuestion);
+            }
+
+        } catch (error) {
+            console.error("Interview error", error);
+            speak("I'm having trouble processing that. Could you say it again?");
+        }
+    }, [history, twinMessage, currentProfile, onInterviewComplete, speak]);
+
+    // 4. Initialize Speech APIs (depends on handleUserAnswer)
     useEffect(() => {
         if (typeof window !== 'undefined') {
             // TTS
@@ -98,123 +183,25 @@ export function TwinInterview({ onInterviewComplete, currentProfile }: TwinInter
                 recognition.onend = () => {
                     setIsListening(false);
                     // If we have a finalized transcript, process it
-                    if (transcript.trim().length > 0) {
-                        handleUserAnswer(transcript);
+                    const finalTranscript = transcriptRef.current;
+                    if (finalTranscript.trim().length > 2) { // Minimal length check
+                        handleUserAnswer(finalTranscript);
                     }
                 };
 
                 recognitionRef.current = recognition;
             }
         }
-    }, [transcript]); // We depend on transcript to access latest state in onend (closure trap fix needed typically, using ref or robust effect dep)
-
-    // Fix closure trap for onend calling handleUserAnswer with stale transcript
-    // Actually, simpler to just use a ref for transcript or handle "final" event in onresult
-    const transcriptRef = useRef('');
-    useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
-
-    useEffect(() => {
-        if (recognitionRef.current) {
-            recognitionRef.current.onend = () => {
-                setIsListening(false);
-                const finalTranscript = transcriptRef.current;
-                if (finalTranscript.trim().length > 2) { // Minimal length check
-                    handleUserAnswer(finalTranscript);
-                }
-            };
-        }
-    }, []); // Run once to attach stable handler, using ref for flexible state access
-
-
-    const speak = useCallback((text: string) => {
-        if (!synthesisRef.current) return;
-
-        // Cancel any ongoing speech
-        synthesisRef.current.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-
-        // Try to find a nice voice
-        const voices = synthesisRef.current.getVoices();
-        const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Samantha'));
-        if (preferredVoice) utterance.voice = preferredVoice;
-
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => {
-            setIsSpeaking(false);
-            // Auto-start listening after speaking finishes?
-            // Let's make it manual for now to avoid feedback loops, or add a delay
-            setTimeout(() => startListening(), 500);
-        };
-
-        setTwinMessage(text);
-        synthesisRef.current.speak(utterance);
-    }, []);
-
-    const startListening = () => {
-        if (recognitionRef.current && !isListening) {
-            setTranscript('');
-            transcriptRef.current = '';
-            try {
-                recognitionRef.current.start();
-                setIsListening(true);
-            } catch (e) {
-                console.error("Speech recognition start failed", e);
-            }
-        }
-    };
-
-    const stopListening = () => {
-        if (recognitionRef.current && isListening) {
-            recognitionRef.current.stop();
-            setIsListening(false);
-        }
-    };
-
-    const handleUserAnswer = async (answer: string) => {
-        // 1. Add to history
-        const newHistory = [...history, { role: 'twin' as const, text: twinMessage }, { role: 'user' as const, text: answer }];
-        setHistory(newHistory);
-
-        // 2. Call Twin Brain (LLM) to process answer & get next question
-        // We'll hit an API route normally, but for MVP we might mock or use the direct service if client-side
-        // Let's assume we use a server action or API route. For now, let's simulate the prompt logic structure
-
-        try {
-            const response = await fetch('/api/twin/interview', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    history: newHistory,
-                    currentProfile: currentProfile
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.isComplete) {
-                speak("Thanks! I think I have enough to build your twin now.");
-                onInterviewComplete(data.extractedProfile);
-            } else {
-                speak(data.nextQuestion);
-            }
-
-        } catch (error) {
-            console.error("Interview error", error);
-            speak("I'm having trouble processing that. Could you say it again?");
-        }
-    };
+    }, [handleUserAnswer]);
 
     // Initial greeting
     useEffect(() => {
-        // Small delay to allow component to mount
         const timer = setTimeout(() => {
             speak(twinMessage);
         }, 1000);
         return () => clearTimeout(timer);
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run once on mount
 
     return (
         <div className="twin-interview">
