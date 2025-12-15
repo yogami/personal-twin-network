@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { TwinDomain } from '@/domain/entities/Twin';
-// Removed unused imports
+import { generateProfileEmbedding, preloadEmbeddingModel } from '@/infrastructure/ai/EmbeddingService';
 import { TwinInterview } from './TwinInterview';
 
 interface TwinFormData {
@@ -19,6 +19,7 @@ interface TwinCreationFormProps {
         skills: string[];
         interests: string[];
         domain: TwinDomain;
+        embedding?: number[];
     }) => void;
     loading?: boolean;
 }
@@ -68,6 +69,11 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
 
+    // Preload embedding model on mount
+    useState(() => {
+        preloadEmbeddingModel().catch(console.error);
+    });
+
     // Handlers for Social Links
     const handleLinkChange = (index: number, value: string) => {
         const newLinks = [...socialLinks];
@@ -102,13 +108,21 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
         }
     };
 
-    const handleInterviewComplete = (extractedData: { name?: string; headline?: string; skills?: string[]; interests?: string[] }) => {
+    const handleInterviewComplete = async (extractedData: { name?: string; headline?: string; skills?: string[]; interests?: string[] }) => {
+        const embedding = await generateProfileEmbedding({
+            name: extractedData.name || 'Anonymous',
+            headline: extractedData.headline || '',
+            skills: extractedData.skills || [],
+            interests: extractedData.interests || [],
+        });
+
         onTwinCreated({
             name: extractedData.name || "Anonymous",
             headline: extractedData.headline || "Digital Twin User",
             skills: extractedData.skills || [],
             interests: extractedData.interests || [],
             domain: formData.domain,
+            embedding,
         });
     };
 
@@ -203,12 +217,23 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
             const allSkills = unique([...extractedData.skills, ...cvSkills]).slice(0, 15);
             const allInterests = unique([...extractedData.interests, ...cvInterests]).slice(0, 10);
 
+            // Generate privacy-preserving embedding
+            setStatusMessage('Generating privacy embedding...');
+            const embedding = await generateProfileEmbedding({
+                name,
+                headline,
+                skills: allSkills,
+                interests: allInterests,
+                bio: extractedData.bioParts.join(' '),
+            });
+
             onTwinCreated({
                 name,
                 headline,
                 skills: allSkills,
                 interests: allInterests,
                 domain: formData.domain,
+                embedding,
             });
 
         } catch (err: unknown) {

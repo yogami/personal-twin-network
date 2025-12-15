@@ -21,6 +21,8 @@ export interface PublicProfile {
     headline: string;
     skills: string[];
     interests: string[];
+    /** Vector embedding for privacy-preserving matching (384-dim) */
+    embedding?: number[];
 }
 
 /**

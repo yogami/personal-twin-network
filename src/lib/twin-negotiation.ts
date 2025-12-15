@@ -9,6 +9,7 @@
 import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { PublicProfile } from '@/domain/entities/Twin';
+import { cosineSimilarity } from '@/infrastructure/ai/EmbeddingService';
 
 // ============================================================================
 // Types
@@ -33,6 +34,8 @@ export interface NegotiationMessage {
     type: 'hello' | 'delta' | 'interest' | 'ack' | 'bye';
     senderId: string;
     senderProfile?: Partial<PublicProfile>;
+    /** Embedding vector for blind matching (privacy-preserving) */
+    senderEmbedding?: number[];
     delta?: TwinDelta;
     interestLevel?: number; // 0-100
 }
@@ -442,8 +445,17 @@ export class TwinNegotiator {
 
     /**
      * Calculate interest level in a peer (0-100)
+     * Uses embedding similarity when available for privacy-preserving matching
      */
     private calculateInterest(peerProfile: PublicProfile): number {
+        // Privacy-first: Use embedding similarity if available
+        if (this.myProfile.embedding && peerProfile.embedding) {
+            const similarity = cosineSimilarity(this.myProfile.embedding, peerProfile.embedding);
+            // Convert similarity (0-1) to percentage (0-100)
+            return Math.round(similarity * 100);
+        }
+
+        // Fallback: Text-based matching
         const sharedSkills = this.findSharedItems(this.myProfile.skills, peerProfile.skills);
         const sharedInterests = this.findSharedItems(this.myProfile.interests, peerProfile.interests);
 
