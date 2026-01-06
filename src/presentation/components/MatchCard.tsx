@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Match } from '@/domain/entities/Match';
+import { Sparkles, MessageCircle, ExternalLink, ChevronDown } from 'lucide-react';
 
 interface MatchCardProps {
   match: Match;
@@ -9,26 +11,24 @@ interface MatchCardProps {
   onConnect: (matchedTwinId: string) => void;
 }
 
-/**
- * MatchCard - Displays a single match result with AI explanation
- */
 export function MatchCard({ match, rank, onConnect }: MatchCardProps) {
-  const scoreColor = getScoreColor(match.score);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleExplain = async () => {
+  const handleExplain = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (explanation) {
+      setIsExpanded(!isExpanded);
+      return;
+    }
+
     setLoadingAI(true);
+    setIsExpanded(true);
     try {
-      // Lazy load the service to keep initial bundle small
       const { localLLM } = await import('@/infrastructure/ai/LocalLLMService');
-
-      // Reconstruct minimal twin objects for the prompt
-      const myTwinMock = { publicProfile: match.matchedProfile } as any; // In real app, we'd pass full twin
+      const myTwinMock = { publicProfile: match.matchedProfile } as any;
       const theirTwinMock = { publicProfile: match.matchedProfile } as any;
-
-      // Note: In a real app we'd pass the actual user's twin from context
-      // Here we just demontrate the UI
       const result = await localLLM.explainMatch(theirTwinMock, theirTwinMock, match.score);
       setExplanation(result);
     } catch (e) {
@@ -40,301 +40,176 @@ export function MatchCard({ match, rank, onConnect }: MatchCardProps) {
   };
 
   return (
-    <div className="match-card">
-      <div className="rank-badge">#{rank}</div>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -4 }}
+      className="group relative"
+    >
+      {/* Glow Effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-      <div className="match-content">
-        <div className="avatar">
-          {match.matchedProfile.name.charAt(0)}
+      <div className="glass-card relative rounded-2xl p-5 border border-white/5 bg-black/40 backdrop-blur-xl overflow-hidden">
+        {/* Rank Badge */}
+        <div className="absolute top-0 left-0 px-4 py-1.5 bg-gradient-to-br from-cyan-500/80 to-blue-600/80 rounded-br-2xl text-xs font-bold text-white shadow-lg shadow-cyan-500/20 z-10">
+          #{rank} Match
         </div>
 
-        <div className="match-info">
-          <h3>{match.matchedProfile.name}</h3>
-          <p className="headline">{match.matchedProfile.headline}</p>
-
-          {match.sharedInterests.length > 0 && (
-            <div className="shared-interests">
-              {match.sharedInterests.slice(0, 3).map((interest, i) => (
-                <span key={i} className="interest-tag">{interest}</span>
-              ))}
+        <div className="flex items-start gap-5 mt-4">
+          {/* Avatar */}
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-2xl font-bold text-white shadow-inner border border-white/10 group-hover:scale-105 transition-transform duration-300">
+              {match.matchedProfile.name.charAt(0)}
             </div>
-          )}
-        </div>
-
-        <div className="score-section">
-          <div className="score-circle" style={{ borderColor: scoreColor }}>
-            <span className="score-value">{match.score}%</span>
+            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#1a1a2e] flex items-center justify-center text-[10px] font-bold ${getScoreColorClass(match.score)} shadow-sm`}>
+              %
+            </div>
           </div>
-          <span className="score-label">Match</span>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0 pt-1">
+            <h3 className="text-lg font-bold text-white leading-tight group-hover:text-cyan-400 transition-colors">
+              {match.matchedProfile.name}
+            </h3>
+            <p className="text-sm text-slate-400 truncate mb-3">
+              {match.matchedProfile.headline}
+            </p>
+
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {match.sharedInterests.slice(0, 3).map((interest, i) => (
+                <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[10px] text-indigo-300 font-medium tracking-wide uppercase">
+                  {interest}
+                </span>
+              ))}
+              {match.sharedInterests.length > 3 && (
+                <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-slate-500">
+                  +{match.sharedInterests.length - 3}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Score */}
+          <div className="flex flex-col items-center justify-center pl-2">
+            <div className="relative w-12 h-12 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <path className="text-white/5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                <path
+                  className={getScoreStrokeClass(match.score)}
+                  strokeDasharray={`${match.score}, 100`}
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute text-sm font-bold text-white">{match.score}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Explanation Area */}
+        <AnimatePresence>
+          {(isExpanded || loadingAI) && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 relative">
+                <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
+                <div className="flex gap-3">
+                  <Sparkles className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-indigo-100/90 leading-relaxed">
+                    {loadingAI ? 'Analyzing deep compatibility vectors...' : explanation}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Actions */}
+        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
+          <button
+            onClick={handleExplain}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/5 hover:border-white/20"
+          >
+            {loadingAI ? (
+              <span className="w-4 h-4 border-2 border-slate-400 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Sparkles size={14} className={explanation ? "text-indigo-400" : ""} />
+            )}
+            {explanation ? (isExpanded ? 'Hide AI' : 'Show AI') : 'Why Match?'}
+          </button>
+
+          <button
+            onClick={() => onConnect(match.matchedTwinId)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:enabled:from-cyan-400 hover:enabled:to-blue-500 text-white shadow-lg shadow-cyan-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <MessageCircle size={14} /> Connect
+          </button>
         </div>
       </div>
-
-      {explanation && (
-        <div className="ai-explanation">
-          <span className="ai-icon">✨</span>
-          <p>{explanation}</p>
-        </div>
-      )}
-
-      <div className="actions">
-        <button
-          className="ai-button"
-          onClick={handleExplain}
-          disabled={loadingAI || explanation !== null}
-        >
-          {loadingAI ? 'Thinking...' : '✨ Explain Match'}
-        </button>
-        <button
-          className="connect-button"
-          onClick={() => onConnect(match.matchedTwinId)}
-        >
-          Connect 💬
-        </button>
-      </div>
-
-      <style jsx>{`
-        .match-card {
-          position: relative;
-          padding: 1.5rem;
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-          border-radius: 16px;
-          color: white;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .match-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-        }
-        .rank-badge {
-          position: absolute;
-          top: -0.5rem;
-          left: -0.5rem;
-          padding: 0.25rem 0.75rem;
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-          border-radius: 20px;
-          font-size: 0.875rem;
-          font-weight: 700;
-        }
-        .match-content {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-        .avatar {
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.5rem;
-          font-weight: 700;
-          flex-shrink: 0;
-        }
-        .match-info {
-          flex: 1;
-          min-width: 0;
-        }
-        .match-info h3 {
-          font-size: 1.125rem;
-          font-weight: 600;
-          margin-bottom: 0.25rem;
-        }
-        .headline {
-          font-size: 0.875rem;
-          color: rgba(255, 255, 255, 0.7);
-          margin-bottom: 0.5rem;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .shared-interests {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-        .interest-tag {
-          padding: 0.125rem 0.5rem;
-          background: rgba(102, 126, 234, 0.3);
-          border-radius: 12px;
-          font-size: 0.75rem;
-        }
-        .score-section {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.25rem;
-        }
-        .score-circle {
-          width: 50px;
-          height: 50px;
-          border-radius: 50%;
-          border: 3px solid;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .score-value {
-          font-size: 0.875rem;
-          font-weight: 700;
-        }
-        .score-label {
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.6);
-        }
-        .actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .ai-button {
-            flex: 1;
-            padding: 0.75rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            color: #e2e8f0;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .ai-button:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-        .ai-button:disabled {
-            opacity: 0.7;
-            cursor: default;
-        }
-        .connect-button {
-          flex: 1;
-          padding: 0.75rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          border-radius: 8px;
-          color: white;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .connect-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        .ai-explanation {
-            margin-bottom: 1rem;
-            padding: 1rem;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 8px;
-            border-left: 3px solid #667eea;
-            display: flex;
-            gap: 0.75rem;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-        .ai-icon {
-            font-size: 1.2rem;
-        }
-      `}</style>
-    </div>
+    </motion.div>
   );
 }
 
-interface MatchListProps {
-  matches: Match[];
-  onConnect: (matchedTwinId: string) => void;
-  loading?: boolean;
-}
-
-/**
- * MatchList - Displays multiple match cards
- */
-export function MatchList({ matches, onConnect, loading }: MatchListProps) {
+export function MatchList({ matches, onConnect, loading }: { matches: Match[], onConnect: any, loading?: boolean }) {
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner" />
-        <p>Finding your perfect matches...</p>
-        <style jsx>{`
-          .loading-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 3rem;
-            color: white;
-          }
-          .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          p {
-            margin-top: 1rem;
-            color: rgba(255, 255, 255, 0.7);
-          }
-        `}</style>
+      <div className="py-20 flex flex-col items-center justify-center">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-cyan-500 animate-spin" />
+        </div>
+        <p className="mt-4 text-cyan-400/80 font-medium animate-pulse">Running Neural Match...</p>
       </div>
     );
   }
 
   if (matches.length === 0) {
     return (
-      <div className="empty-state">
-        <span className="emoji">🔍</span>
-        <p>No matches yet. Join an event to meet people!</p>
-        <style jsx>{`
-          .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: rgba(255, 255, 255, 0.7);
-          }
-          .emoji {
-            font-size: 3rem;
-          }
-          p {
-            margin-top: 1rem;
-          }
-        `}</style>
+      <div className="py-20 text-center glass-card rounded-2xl border-dashed border-2 border-white/10">
+        <span className="text-4xl block mb-4 opacity-50">🔭</span>
+        <p className="text-slate-400">No matches found yet.</p>
+        <p className="text-slate-500 text-sm mt-2">Try expanding your interests or joining more events.</p>
       </div>
     );
   }
 
   return (
-    <div className="match-list">
-      {matches.map((match, index) => (
-        <MatchCard
-          key={match.matchedTwinId}
-          match={match}
-          rank={index + 1}
-          onConnect={onConnect}
-        />
-      ))}
-      <style jsx>{`
-        .match-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-      `}</style>
+    <div className="space-y-4 pb-20">
+      <AnimatePresence>
+        {matches.map((match, index) => (
+          <MatchCard
+            key={match.matchedTwinId}
+            match={match}
+            rank={index + 1}
+            onConnect={onConnect}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
 
-/**
- * Returns color based on match score
- */
-function getScoreColor(score: number): string {
-  if (score >= 80) return '#4ade80'; // Green
-  if (score >= 60) return '#facc15'; // Yellow
-  return '#f87171'; // Red
+// Helpers
+function getScoreColorClass(score: number) {
+  if (score >= 90) return 'bg-emerald-500 text-emerald-950';
+  if (score >= 80) return 'bg-cyan-500 text-cyan-950';
+  if (score >= 60) return 'bg-yellow-500 text-yellow-950';
+  return 'bg-red-500 text-red-950';
+}
+
+function getScoreStrokeClass(score: number) {
+  if (score >= 90) return 'text-emerald-500';
+  if (score >= 80) return 'text-cyan-500';
+  if (score >= 60) return 'text-yellow-500';
+  return 'text-red-500';
 }

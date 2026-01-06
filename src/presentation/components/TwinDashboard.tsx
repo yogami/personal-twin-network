@@ -1,284 +1,136 @@
 'use client';
 
 import { Twin } from '@/domain/entities/Twin';
+import { User, Activity, Power, Share2 } from 'lucide-react';
+import clsx from 'clsx';
 
 interface TwinStatusCardProps {
-    twin: Twin | null;
-    onDeactivate?: () => void;
+  twin: Twin | null;
+  onDeactivate?: () => void;
 }
 
 /**
  * TwinStatusCard - Shows current twin status on dashboard
  */
 export function TwinStatusCard({ twin, onDeactivate }: TwinStatusCardProps) {
-    if (!twin) {
-        return (
-            <div className="twin-status-card inactive">
-                <div className="status-icon">👤</div>
-                <div className="status-content">
-                    <h3>No Twin Active</h3>
-                    <p>Create your digital twin to start matching</p>
-                </div>
-                <style jsx>{cardStyles}</style>
-            </div>
-        );
-    }
-
+  if (!twin) {
     return (
-        <div className="twin-status-card active">
-            <div className="status-indicator">
-                <span className="pulse" />
-                <span>Active</span>
-            </div>
-
-            <div className="twin-avatar">
-                {twin.publicProfile.name.charAt(0)}
-            </div>
-
-            <div className="twin-info">
-                <h3>{twin.publicProfile.name}</h3>
-                <p className="headline">{twin.publicProfile.headline}</p>
-
-                {twin.publicProfile.skills.length > 0 && (
-                    <div className="skills">
-                        {twin.publicProfile.skills.slice(0, 4).map((skill, i) => (
-                            <span key={i} className="skill-tag">{skill}</span>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div className="twin-domain">
-                {getDomainBadge(twin.domain)}
-            </div>
-
-            {onDeactivate && (
-                <button onClick={onDeactivate} className="deactivate-btn">
-                    Deactivate Twin
-                </button>
-            )}
-
-            <style jsx>{cardStyles}</style>
+      <div className="glass-card p-6 rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-center gap-3">
+        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-slate-500">
+          <User size={32} />
         </div>
+        <div>
+          <h3 className="text-lg font-semibold text-white">No Twin Active</h3>
+          <p className="text-sm text-slate-400">Create your digital twin to start matching</p>
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="relative glass-card p-6 rounded-2xl overflow-hidden group">
+      {/* Status Indicator */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Active</span>
+      </div>
+
+      <div className="flex items-start gap-4">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-purple-500/30">
+          {twin.publicProfile.name.charAt(0)}
+        </div>
+
+        <div className="flex-1 min-w-0 pt-1">
+          <h3 className="text-xl font-bold text-white leading-tight">{twin.publicProfile.name}</h3>
+          <p className="text-sm text-slate-400 truncate mb-3">{twin.publicProfile.headline}</p>
+
+          {twin.publicProfile.skills.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {twin.publicProfile.skills.slice(0, 3).map((skill, i) => (
+                <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[10px] text-indigo-300 font-medium tracking-wide uppercase">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-xs font-medium text-slate-300">
+          {getDomainBadge(twin.domain)}
+        </div>
+
+        {onDeactivate && (
+          <button
+            onClick={onDeactivate}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+          >
+            <Power size={14} /> Deactivate
+          </button>
+        )}
+      </div>
+
+      {/* Decorative bg blur */}
+      <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+    </div>
+  );
 }
 
-const cardStyles = `
-  .twin-status-card {
-    position: relative;
-    padding: 1.5rem;
-    border-radius: 16px;
-    color: white;
-  }
-  .twin-status-card.inactive {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px dashed rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  .twin-status-card.active {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  }
-  .status-icon {
-    font-size: 2.5rem;
-    opacity: 0.5;
-  }
-  .status-content h3 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
-  }
-  .status-content p {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.5);
-  }
-  .status-indicator {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    color: #4ade80;
-  }
-  .pulse {
-    width: 8px;
-    height: 8px;
-    background: #4ade80;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  .twin-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .twin-info h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-  }
-  .headline {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
-    margin-bottom: 0.75rem;
-  }
-  .skills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .skill-tag {
-    padding: 0.25rem 0.75rem;
-    background: rgba(102, 126, 234, 0.3);
-    border-radius: 20px;
-    font-size: 0.75rem;
-  }
-  .twin-domain {
-    position: absolute;
-    bottom: 1rem;
-    right: 1rem;
-    padding: 0.25rem 0.75rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    font-size: 0.75rem;
-  }
-  .deactivate-btn {
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: 1px solid rgba(239, 68, 68, 0.5);
-    border-radius: 8px;
-    color: #f87171;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .deactivate-btn:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #f87171;
-  }
-`;
-
 function getDomainBadge(domain: string): string {
-    switch (domain) {
-        case 'networking': return '🤝 Networking';
-        case 'events': return '🎉 Events';
-        case 'dating': return '💕 Dating';
-        default: return '👤 General';
-    }
+  switch (domain) {
+    case 'networking': return '🤝 Networking';
+    case 'events': return '🎉 Events';
+    case 'dating': return '💕 Dating';
+    default: return '👤 General';
+  }
 }
 
 interface PrivacyDashboardProps {
-    dataPoints: number;
-    eventsJoined: number;
-    matchesMade: number;
+  dataPoints: number;
+  eventsJoined: number;
+  matchesMade: number;
 }
 
 /**
  * PrivacyDashboard - Shows privacy status and data summary
  */
 export function PrivacyDashboard({ dataPoints, eventsJoined, matchesMade }: PrivacyDashboardProps) {
-    return (
-        <div className="privacy-dashboard">
-            <div className="privacy-header">
-                <span className="shield">🛡️</span>
-                <div>
-                    <h3>Privacy First</h3>
-                    <p>All data stays on your device</p>
-                </div>
-            </div>
-
-            <div className="stats-row">
-                <div className="stat">
-                    <span className="stat-value">{dataPoints}</span>
-                    <span className="stat-label">Profile Points</span>
-                </div>
-                <div className="stat">
-                    <span className="stat-value">{eventsJoined}</span>
-                    <span className="stat-label">Events</span>
-                </div>
-                <div className="stat">
-                    <span className="stat-value">{matchesMade}</span>
-                    <span className="stat-label">Matches</span>
-                </div>
-            </div>
-
-            <div className="privacy-badges">
-                <span className="badge">✓ On-device storage</span>
-                <span className="badge">✓ No cloud profiles</span>
-                <span className="badge">✓ GDPR compliant</span>
-            </div>
-
-            <style jsx>{`
-        .privacy-dashboard {
-          padding: 1.5rem;
-          background: linear-gradient(135deg, #0f4c3a 0%, #134e4a 100%);
-          border-radius: 16px;
-          color: white;
-        }
-        .privacy-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-        .shield {
-          font-size: 2rem;
-        }
-        .privacy-header h3 {
-          font-size: 1.125rem;
-          font-weight: 600;
-        }
-        .privacy-header p {
-          font-size: 0.875rem;
-          color: rgba(255, 255, 255, 0.7);
-        }
-        .stats-row {
-          display: flex;
-          justify-content: space-around;
-          margin-bottom: 1.5rem;
-        }
-        .stat {
-          text-align: center;
-        }
-        .stat-value {
-          display: block;
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #4ade80;
-        }
-        .stat-label {
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.6);
-        }
-        .privacy-badges {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-        .badge {
-          padding: 0.25rem 0.75rem;
-          background: rgba(74, 222, 128, 0.2);
-          border-radius: 20px;
-          font-size: 0.75rem;
-          color: #4ade80;
-        }
-      `}</style>
+  return (
+    <div className="glass-panel p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/20">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+          <Share2 size={24} className="rotate-180" /> {/* Using share icon rotated as shield metaphor */}
         </div>
-    );
+        <div>
+          <h3 className="font-bold text-white leading-tight">Privacy First</h3>
+          <p className="text-xs text-emerald-400/80">All data stays on your device</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-6 divide-x divide-white/5">
+        <div className="text-center px-1">
+          <span className="block text-xl font-bold text-white mb-1">{dataPoints}</span>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Points</span>
+        </div>
+        <div className="text-center px-1">
+          <span className="block text-xl font-bold text-white mb-1">{eventsJoined}</span>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Events</span>
+        </div>
+        <div className="text-center px-1">
+          <span className="block text-xl font-bold text-white mb-1">{matchesMade}</span>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Matches</span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <span className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-medium">✓ On-device storage</span>
+        <span className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-medium">✓ No cloud profiles</span>
+        <span className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-medium">✓ GDPR compliant</span>
+      </div>
+    </div>
+  );
 }

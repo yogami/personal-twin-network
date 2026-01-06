@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TwinStatusCard, PrivacyDashboard } from '@/presentation/components/TwinDashboard';
 import { MatchList } from '@/presentation/components/MatchCard';
 import { QRScanner, QRCodeGenerator } from '@/presentation/components/QRCode';
@@ -13,6 +14,8 @@ import { Match } from '@/domain/entities/Match';
 import { getTwinBrain } from '@/lib/twin-brain';
 import { getEdgeMatchingService, initializeEdgeMatching } from '@/lib/edge-matching';
 import Link from 'next/link';
+import { Activity, Bell, Grid, Plus, QrCode, RefreshCw, Smartphone, Zap } from 'lucide-react';
+import clsx from 'clsx';
 
 // Demo data for MVP demonstration
 const demoTwin: Twin = {
@@ -29,7 +32,6 @@ const demoTwin: Twin = {
   createdAt: new Date(),
 };
 
-// Demo candidates for local matching
 const demoCandidates = [
   {
     name: 'Anna Kowalski',
@@ -73,89 +75,57 @@ export default function DashboardPage() {
   const [matchCount, setMatchCount] = useState(0);
   const [negotiationCount, setNegotiationCount] = useState(0);
 
-  // PWA and Twin Brain hooks
   const {
     isInstalled,
-    // isOnline, // Removed unused
     swReady,
     twinBrainActive,
     activateTwinBrain,
     lastSyncTime,
   } = usePWA();
 
-  // Perform edge-only matching
   const performEdgeMatching = useCallback(async (userTwin: Twin) => {
     setIsProcessing(true);
-
     try {
       const edgeService = getEdgeMatchingService();
       const result = await edgeService.findMatches({
         userTwin,
         candidates: demoCandidates,
-        eventContext: {
-          theme: 'Berlin Tech Meetup',
-          description: 'AI and Startups networking event',
-        },
+        eventContext: { theme: 'Berlin Tech Meetup', description: 'AI and Startups networking event' },
       });
 
       setMatches(result.matches.slice(0, 5));
       setMatchSource(result.source === 'gemini' ? 'edge' : 'edge');
       setMatchCount((prev) => prev + result.matches.length);
-
-      console.log(`[Dashboard] Edge matching complete: ${result.matches.length} matches in ${result.processingTimeMs}ms (${result.source})`);
     } catch (error) {
       console.error('Edge matching failed:', error);
-      // Keep existing matches
     } finally {
       setIsProcessing(false);
     }
   }, []);
 
-  // Initialize edge matching and load twin
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize edge matching service
         initializeEdgeMatching();
-
-        // Try to load twin from local brain
         getTwinBrain();
-
-        // For demo, we use demo twin (in production, unlock with passphrase)
         setTwin(demoTwin);
-
-        // Activate twin in service worker for background operation
-        if (swReady) {
-          await activateTwinBrain(demoTwin);
-        }
-
-        // Perform initial local matching
+        if (swReady) await activateTwinBrain(demoTwin);
         await performEdgeMatching(demoTwin);
-
       } catch (error) {
         console.error('Failed to initialize:', error);
-        // Fallback to demo data
         setTwin(demoTwin);
       } finally {
         setLoading(false);
       }
     };
-
     initializeApp();
   }, [swReady, activateTwinBrain, performEdgeMatching]);
 
-
-
-  // Handle event join via QR scan
   const handleEventJoin = useCallback(async (eventId: string) => {
-    console.log('Joining event:', eventId);
     if (!twin) return;
-
     setLoading(true);
     setNegotiationCount((prev) => prev + 1);
-
     try {
-      // Use edge-only matching
       await performEdgeMatching(twin);
       setActiveTab('matches');
     } catch (error) {
@@ -165,16 +135,11 @@ export default function DashboardPage() {
     }
   }, [twin, performEdgeMatching]);
 
-  // Handle connect action
   const handleConnect = useCallback((matchedTwinId: string) => {
-    console.log('Connecting with:', matchedTwinId);
     setNegotiationCount((prev) => prev + 1);
-
-    // In production: initiate P2P connection via twin-negotiation
     alert('🤝 Connection request sent! Your twin will negotiate.');
   }, []);
 
-  // Refresh matches
   const handleRefresh = useCallback(async () => {
     if (!twin) return;
     await performEdgeMatching(twin);
@@ -182,63 +147,58 @@ export default function DashboardPage() {
 
   if (loading && !twin) {
     return (
-      <div className="loading-screen">
-        <div className="spinner" />
-        <p>Activating your twin brain...</p>
-        <style jsx>{`
-          .loading-screen {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
-          }
-          .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          p {
-            margin-top: 1rem;
-            color: rgba(255, 255, 255, 0.7);
-          }
-        `}</style>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#030014]">
+        <div className="relative w-20 h-20">
+          <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-cyan-500 animate-spin" />
+        </div>
+        <p className="mt-8 text-cyan-400 font-medium tracking-wide animate-pulse">Initializing Neural Digital Twin...</p>
       </div>
     );
   }
 
   return (
-    <div className="dashboard">
-      {/* Header */}
-      <header className="dashboard-header">
-        <Link href="/" className="logo">
-          ✨ Twin Network
-        </Link>
-        <div className="header-actions">
-          <button className="refresh-btn" onClick={handleRefresh} disabled={isProcessing}>
-            🔄
-          </button>
-          <button className="notification-btn">
-            🔔
-            {matches.length > 0 && <span className="badge">{matches.length}</span>}
-          </button>
+    <div className="min-h-screen bg-[#030014] text-white pb-24 overflow-x-hidden">
+      {/* Background Ambience */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-cyan-900/10 rounded-full blur-[120px]" />
+      </div>
+
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 glass-panel border-b border-white/5 backdrop-blur-xl px-4 py-3">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight">
+            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-lg shadow-purple-500/20">TN</span>
+            Twin Net
+          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={isProcessing}
+              className="p-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={20} className={isProcessing ? "animate-spin text-cyan-400" : "text-slate-300"} />
+            </button>
+            <div className="relative">
+              <button className="p-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors">
+                <Bell size={20} className="text-slate-300" />
+              </button>
+              {matches.length > 0 && (
+                <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold border-2 border-[#030014]">
+                  {matches.length}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="dashboard-main">
-        {/* PWA Install and Offline Banners */}
+      <main className="relative z-10 max-w-md mx-auto px-4 pt-6 space-y-6">
         <OfflineBanner />
         {!isInstalled && <PWAInstallBanner />}
 
-        {/* Twin Personality - The "magic" UX */}
+        {/* Hero UX Component */}
         <TwinPersonality
           twinName={twin?.publicProfile.name || 'Your Twin'}
           isActive={twinBrainActive}
@@ -247,249 +207,137 @@ export default function DashboardPage() {
           isProcessing={isProcessing}
         />
 
-        {/* Activity Counter */}
-        <TwinActivityCounter
-          matchesToday={matchCount}
-          negotiationsToday={negotiationCount}
-          connectionsTotal={0}
-        />
-
-        {/* Twin Status */}
-        <section className="twin-section">
-          <TwinStatusCard twin={twin} />
-        </section>
-
-        {/* Tab Navigation */}
-        <nav className="tab-nav">
-          <button
-            className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
-            onClick={() => setActiveTab('matches')}
-          >
-            🔥 Matches
-          </button>
-          <button
-            className={`tab ${activeTab === 'scan' ? 'active' : ''}`}
-            onClick={() => setActiveTab('scan')}
-          >
-            📱 Scan QR
-          </button>
-          <button
-            className={`tab ${activeTab === 'create' ? 'active' : ''}`}
-            onClick={() => setActiveTab('create')}
-          >
-            ➕ Create Event
-          </button>
-        </nav>
-
-        {/* Tab Content */}
-        <section className="tab-content">
-          {activeTab === 'matches' && (
-            <div className="matches-section">
-              <div className="section-header">
-                <h2>Your Top Matches</h2>
-                <span className={`source-badge ${matchSource}`}>
-                  {matchSource === 'edge' ? '🔒 On-Device' : '☁️ Server'}
-                </span>
-              </div>
-              <MatchList
-                matches={matches}
-                onConnect={handleConnect}
-                loading={isProcessing}
-              />
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="glass-card p-4 rounded-2xl flex flex-col items-center justify-center gap-1 group">
+            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 mb-1 group-hover:scale-110 transition-transform">
+              <Zap size={20} />
             </div>
-          )}
-
-          {activeTab === 'scan' && (
-            <div className="scan-section">
-              <QRScanner
-                onScan={handleEventJoin}
-                onError={(error) => console.error(error)}
-              />
+            <span className="text-2xl font-bold">{matchCount}</span>
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Matches</span>
+          </div>
+          <div className="glass-card p-4 rounded-2xl flex flex-col items-center justify-center gap-1 group">
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 mb-1 group-hover:scale-110 transition-transform">
+              <Activity size={20} />
             </div>
-          )}
+            <span className="text-2xl font-bold">{negotiationCount}</span>
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Talks</span>
+          </div>
+        </div>
 
-          {activeTab === 'create' && (
-            <div className="create-section">
-              <h2>Your Event QR</h2>
-              <p>Share this QR code for others to join your event mesh.</p>
-              <QRCodeGenerator
-                eventId="demo-event-123"
-                eventName="Berlin AI Meetup"
-              />
-            </div>
-          )}
-        </section>
-
-        {/* Privacy Indicator - NEW */}
-        <PrivacyIndicator
-          isEdgeMatching={matchSource === 'edge'}
-          isP2PActive={false}
-          bytesTransmitted={0}
-          isEncrypted={true}
-          lastSyncTime={lastSyncTime}
-        />
-
-        {/* Privacy Dashboard */}
-        <section className="privacy-section">
-          <PrivacyDashboard
-            dataPoints={twin?.publicProfile.skills.length ?? 0 + (twin?.publicProfile.interests.length ?? 0)}
-            eventsJoined={1}
-            matchesMade={matches.length}
+        {/* Navigation Tabs */}
+        <div className="glass-panel p-1 rounded-xl flex items-center justify-between relative">
+          {/* Active Indicator Background */}
+          <motion.div
+            layoutId="activeTab"
+            className="absolute bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-lg"
+            style={{
+              width: '33.33%',
+              height: 'calc(100% - 8px)',
+              left: activeTab === 'matches' ? '4px' : activeTab === 'scan' ? '33.33%' : '66.66%',
+              top: '4px'
+            }}
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           />
-        </section>
+
+          <TabButton
+            active={activeTab === 'matches'}
+            onClick={() => setActiveTab('matches')}
+            icon={<Grid size={18} />}
+            label="Matches"
+          />
+          <TabButton
+            active={activeTab === 'scan'}
+            onClick={() => setActiveTab('scan')}
+            icon={<QrCode size={18} />}
+            label="Scan"
+          />
+          <TabButton
+            active={activeTab === 'create'}
+            onClick={() => setActiveTab('create')}
+            icon={<Plus size={18} />}
+            label="Create"
+          />
+        </div>
+
+        {/* Content Area */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className="min-h-[400px]"
+          >
+            {activeTab === 'matches' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-lg font-bold text-white">Top Matches</h2>
+                  <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5 ${matchSource === 'edge' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${matchSource === 'edge' ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
+                    {matchSource === 'edge' ? 'On-Device' : 'Cloud'}
+                  </div>
+                </div>
+                <MatchList matches={matches} onConnect={handleConnect} loading={isProcessing} />
+              </div>
+            )}
+
+            {activeTab === 'scan' && (
+              <div className="glass-card p-6 rounded-3xl flex flex-col items-center justify-center min-h-[400px]">
+                <QRScanner onScan={handleEventJoin} onError={console.error} />
+                <p className="mt-6 text-center text-sm text-slate-400 w-2/3">
+                  Scan an event QR code to instantly sync and find matches nearby.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'create' && (
+              <div className="glass-card p-8 rounded-3xl flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 mb-6">
+                  <QrCode size={32} />
+                </div>
+                <h2 className="text-xl font-bold mb-2">Event QR Code</h2>
+                <p className="text-sm text-slate-400 mb-8">Share this code to let others join your mesh.</p>
+                <QRCodeGenerator eventId="demo-event-123" eventName="Berlin AI Meetup" />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Privacy Status Footer */}
+        <div className="pt-8 pb-4">
+          <PrivacyIndicator
+            isEdgeMatching={matchSource === 'edge'}
+            isP2PActive={false}
+            bytesTransmitted={0}
+            isEncrypted={true}
+            lastSyncTime={lastSyncTime}
+          />
+          <div className="mt-6 border-t border-white/5 pt-6">
+            <PrivacyDashboard
+              dataPoints={twin?.publicProfile.skills.length ?? 0 + (twin?.publicProfile.interests.length ?? 0)}
+              eventsJoined={1}
+              matchesMade={matches.length}
+            />
+          </div>
+        </div>
       </main>
-
-      <style jsx>{`
-        .dashboard {
-          min-height: 100vh;
-        }
-
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem 1.5rem;
-          background: rgba(0, 0, 0, 0.3);
-          backdrop-filter: blur(10px);
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-
-        .logo {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: white;
-        }
-
-        .header-actions {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .refresh-btn,
-        .notification-btn {
-          position: relative;
-          padding: 0.5rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          border-radius: 8px;
-          font-size: 1.25rem;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-
-        .refresh-btn:hover,
-        .notification-btn:hover {
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        .refresh-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .notification-btn .badge {
-          position: absolute;
-          top: -4px;
-          right: -4px;
-          width: 18px;
-          height: 18px;
-          background: #f87171;
-          border-radius: 50%;
-          font-size: 0.625rem;
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .dashboard-main {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 1.5rem;
-        }
-
-        .twin-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .tab-nav {
-          display: flex;
-          gap: 0.5rem;
-          margin-bottom: 1.5rem;
-          overflow-x: auto;
-          padding-bottom: 0.5rem;
-        }
-
-        .tab {
-          flex: 1;
-          padding: 0.75rem 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          color: rgba(255, 255, 255, 0.7);
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-
-        .tab:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-
-        .tab.active {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-color: transparent;
-          color: white;
-        }
-
-        .tab-content {
-          margin-bottom: 1.5rem;
-        }
-
-        .section-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        }
-
-        .matches-section h2,
-        .create-section h2 {
-          font-size: 1.25rem;
-          color: white;
-          margin: 0;
-        }
-
-        .source-badge {
-          padding: 0.25rem 0.5rem;
-          border-radius: 12px;
-          font-size: 0.7rem;
-          font-weight: 600;
-        }
-
-        .source-badge.edge {
-          background: rgba(74, 222, 128, 0.15);
-          color: #4ade80;
-        }
-
-        .source-badge.server {
-          background: rgba(251, 191, 36, 0.15);
-          color: #fbbf24;
-        }
-
-        .create-section p {
-          color: rgba(255, 255, 255, 0.6);
-          margin-bottom: 1.5rem;
-          font-size: 0.875rem;
-        }
-
-        .privacy-section {
-          margin-top: 2rem;
-        }
-      `}</style>
     </div>
+  );
+}
+
+function TabButton({ active, onClick, icon, label }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "relative z-10 flex-1 flex flex-col items-center justify-center gap-1.5 py-2 transition-colors duration-300",
+        active ? "text-white" : "text-slate-500 hover:text-slate-300"
+      )}
+    >
+      {icon}
+      <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+    </button>
   );
 }

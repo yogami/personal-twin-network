@@ -4,6 +4,8 @@ import { useState, useRef } from 'react';
 import { TwinDomain } from '@/domain/entities/Twin';
 import { generateProfileEmbedding, preloadEmbeddingModel } from '@/infrastructure/ai/EmbeddingService';
 import { TwinInterview } from './TwinInterview';
+import { UploadCloud, Link as LinkIcon, FileText, X, Mic, Globe, Shield } from 'lucide-react';
+import clsx from 'clsx';
 
 interface TwinFormData {
     name: string;
@@ -24,7 +26,6 @@ interface TwinCreationFormProps {
     loading?: boolean;
 }
 
-// Function to get distinct skills/interests
 function unique(arr: string[]) {
     return Array.from(new Set(arr));
 }
@@ -47,34 +48,22 @@ function extractInterestsFromText(text: string): string[] {
     return commonInterests.filter(i => text.toLowerCase().includes(i.toLowerCase()));
 }
 
-/**
- * TwinCreationForm - Onboarding with multiple data sources
- * Supports Multi-Social Links sent to /api/social/extract
- */
 export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormProps) {
     const [mode, setMode] = useState<'upload' | 'interview'>('upload');
     const [formData, setFormData] = useState<TwinFormData>({
-        name: '',
-        headline: '',
-        bio: '',
-        domain: 'networking',
+        name: '', headline: '', bio: '', domain: 'networking',
     });
-
-    // Multi-Social State
     const [socialLinks, setSocialLinks] = useState<string[]>(['']);
-
     const [cvFile, setCvFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    // Preload embedding model on mount
     useState(() => {
         preloadEmbeddingModel().catch(console.error);
     });
 
-    // Handlers for Social Links
     const handleLinkChange = (index: number, value: string) => {
         const newLinks = [...socialLinks];
         newLinks[index] = value;
@@ -82,24 +71,19 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
     };
 
     const addLinkField = () => {
-        if (socialLinks.length < 5) {
-            setSocialLinks([...socialLinks, '']);
-        }
+        if (socialLinks.length < 5) setSocialLinks([...socialLinks, '']);
     };
 
     const removeLinkField = (index: number) => {
         if (socialLinks.length > 1) {
-            const newLinks = socialLinks.filter((_, i) => i !== index);
-            setSocialLinks(newLinks);
+            setSocialLinks(socialLinks.filter((_, i) => i !== index));
         }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.type === 'application/pdf' ||
-                file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                file.type === 'application/msword') {
+            if (['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'].includes(file.type)) {
                 setCvFile(file);
                 setError(null);
             } else {
@@ -129,10 +113,8 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
     const handleConnectSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-
         const validLinks = socialLinks.filter(l => l.trim().length > 0);
 
-        // Validation: At least one source
         if (validLinks.length === 0 && !cvFile) {
             setError('Please provide at least one source: A Social Link or CV Upload.');
             return;
@@ -141,26 +123,14 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
         setIsProcessing(true);
         setStatusMessage('Initializing Twin Brain...');
 
-        const extractedData: {
-            name: string;
-            headline: string;
-            skills: string[];
-            interests: string[];
-            bioParts: string[];
-        } = {
-            name: '',
-            headline: '',
-            skills: [],
-            interests: [],
-            bioParts: []
+        const extractedData: { name: string; headline: string; skills: string[]; interests: string[]; bioParts: string[]; } = {
+            name: '', headline: '', skills: [], interests: [], bioParts: []
         };
         let cvText = '';
 
         try {
-            // 1. Process Social Links (Parallel)
             if (validLinks.length > 0) {
                 setStatusMessage(`Scanning ${validLinks.length} social footprint(s)...`);
-
                 const results = await Promise.all(validLinks.map(async (url) => {
                     try {
                         const res = await fetch('/api/social/extract', {
@@ -170,12 +140,10 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                         });
                         return await res.json();
                     } catch (e) {
-                        console.error("Failed to extract", url, e);
                         return null;
                     }
                 }));
 
-                // Merge Results
                 for (const res of results) {
                     if (res) {
                         if (res.name && !extractedData.name) extractedData.name = res.name;
@@ -187,53 +155,32 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                 }
             }
 
-            // 2. Process CV if provided
             if (cvFile) {
                 setStatusMessage('Reading CV/Resume...');
                 const fd = new FormData();
                 fd.append('file', cvFile);
-
-                const res = await fetch('/api/document/parse', {
-                    method: 'POST',
-                    body: fd,
-                });
-
+                const res = await fetch('/api/document/parse', { method: 'POST', body: fd });
                 if (!res.ok) throw new Error('Failed to parse document');
                 const data = await res.json();
                 cvText = data.text;
                 extractedData.bioParts.push(`CV Content: ${cvText.slice(0, 500)}...`);
             }
 
-            // 3. Synthesize
             setStatusMessage('Synthesizing Identity...');
-
             const name = extractedData.name || formData.name || "Anonymous User";
             const headline = extractedData.headline || "Digital Networker";
-
-            // Merge skills from all sources + CV text
             const cvSkills = extractSkillsFromText(cvText);
             const cvInterests = extractInterestsFromText(cvText);
-
             const allSkills = unique([...extractedData.skills, ...cvSkills]).slice(0, 15);
             const allInterests = unique([...extractedData.interests, ...cvInterests]).slice(0, 10);
 
-            // Generate privacy-preserving embedding
             setStatusMessage('Generating privacy embedding...');
             const embedding = await generateProfileEmbedding({
-                name,
-                headline,
-                skills: allSkills,
-                interests: allInterests,
-                bio: extractedData.bioParts.join(' '),
+                name, headline, skills: allSkills, interests: allInterests, bio: extractedData.bioParts.join(' '),
             });
 
             onTwinCreated({
-                name,
-                headline,
-                skills: allSkills,
-                interests: allInterests,
-                domain: formData.domain,
-                embedding,
+                name, headline, skills: allSkills, interests: allInterests, domain: formData.domain, embedding,
             });
 
         } catch (err: unknown) {
@@ -243,50 +190,68 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
     };
 
     return (
-        <div className="twin-form">
-            <div className="form-header">
-                <h2>Create Your Digital Twin</h2>
-                <p>Train your personal AI agent to represent you</p>
+        <div className="w-full">
+            <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-white">
+                    Create Your Digital Twin
+                </h2>
+                <p className="text-slate-400 text-sm">Train your personal AI agent to represent you</p>
             </div>
 
             {/* Domain Selector */}
-            <div className="domain-selector">
-                <label>Primary Goal</label>
-                <div className="domain-buttons">
+            <div className="mb-6">
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Primary Goal</label>
+                <div className="grid grid-cols-3 gap-2">
                     {(['networking', 'events', 'dating'] as TwinDomain[]).map((domain) => (
                         <button
                             key={domain}
                             type="button"
-                            className={`domain-btn ${formData.domain === domain ? 'active' : ''}`}
+                            className={clsx(
+                                "flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200",
+                                formData.domain === domain
+                                    ? "bg-cyan-500/20 border-cyan-500 text-white shadow-lg shadow-cyan-500/10"
+                                    : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                            )}
                             onClick={() => setFormData({ ...formData, domain })}
                         >
-                            {getDomainIcon(domain)} {domain.charAt(0).toUpperCase() + domain.slice(1)}
+                            <span className="text-xl mb-1">{getDomainIcon(domain)}</span>
+                            <span className="text-xs font-medium capitalize">{domain}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Mode Selector Tabs */}
-            <div className="mode-tabs">
+            <div className="flex p-1 rounded-xl bg-black/40 mb-6 relative">
                 <button
-                    className={`mode-tab ${mode === 'upload' ? 'active' : ''}`}
+                    className={clsx(
+                        "flex-1 py-2 rounded-lg text-sm font-medium transition-all z-10",
+                        mode === 'upload' ? "text-white bg-white/10 shadow-sm" : "text-slate-500 hover:text-slate-300"
+                    )}
                     onClick={() => setMode('upload')}
                 >
                     📤 Data Upload
                 </button>
                 <button
-                    className={`mode-tab ${mode === 'interview' ? 'active' : ''}`}
+                    className={clsx(
+                        "flex-1 py-2 rounded-lg text-sm font-medium transition-all z-10",
+                        mode === 'interview' ? "text-white bg-white/10 shadow-sm" : "text-slate-500 hover:text-slate-300"
+                    )}
                     onClick={() => setMode('interview')}
                 >
                     🗣️ Voice Interview
                 </button>
             </div>
 
-            {error && <div className="error-message">⚠️ {error}</div>}
+            {error && (
+                <div className="p-3 mb-4 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-sm flex items-center gap-2">
+                    <X size={16} /> {error}
+                </div>
+            )}
 
             {mode === 'interview' ? (
-                <div className="interview-container">
-                    <p className="interview-intro">
+                <div className="bg-white/5 rounded-2xl p-6 border border-white/5 text-center">
+                    <p className="text-slate-300 text-sm mb-6">
                         Have a quick chat with your Twin. It will ask you about your background and interests to build your profile.
                     </p>
                     <TwinInterview
@@ -295,48 +260,56 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                     />
                 </div>
             ) : (
-                <form onSubmit={handleConnectSubmit} className="connect-form">
+                <form onSubmit={handleConnectSubmit} className="space-y-6">
 
-                    {/* Source 1: Social Links (Multi) */}
-                    <div className="source-section">
-                        <div className="section-header">
-                            <span className="icon">🌐</span>
-                            <h3>Social Footprint</h3>
+                    {/* Source 1: Social Links */}
+                    <div className="glass-panel p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Globe size={18} className="text-cyan-400" />
+                            <h3 className="font-semibold text-white text-sm">Social Footprint</h3>
                         </div>
-                        <div className="links-list">
+                        <div className="space-y-3">
                             {socialLinks.map((link, idx) => (
-                                <div key={idx} className="input-group link-row">
+                                <div key={idx} className="flex gap-2">
                                     <input
                                         type="url"
                                         value={link}
                                         onChange={(e) => handleLinkChange(idx, e.target.value)}
-                                        placeholder="LinkedIn, Twitter, Instagram..."
-                                        className="url-input"
+                                        placeholder="LinkedIn, Twitter, GitHub..."
+                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500 focus:outline-none transition-colors"
                                     />
                                     {socialLinks.length > 1 && (
-                                        <button type="button" className="remove-btn" onClick={() => removeLinkField(idx)}>×</button>
+                                        <button type="button" onClick={() => removeLinkField(idx)} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                                            <X size={16} />
+                                        </button>
                                     )}
                                 </div>
                             ))}
                             {socialLinks.length < 5 && (
-                                <button type="button" className="add-btn" onClick={addLinkField}>+ Add another source</button>
+                                <button type="button" onClick={addLinkField} className="text-xs text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1">
+                                    + Add another source
+                                </button>
                             )}
                         </div>
-                        <p className="input-hint">We support LinkedIn, Twitter, Instagram, GitHub...</p>
                     </div>
 
-                    <div className="divider">
-                        <span>AND / OR</span>
+                    <div className="flex items-center gap-4 py-2">
+                        <div className="h-px flex-1 bg-white/10" />
+                        <span className="text-xs font-bold text-slate-500">OR</span>
+                        <div className="h-px flex-1 bg-white/10" />
                     </div>
 
                     {/* Source 2: CV Upload */}
-                    <div className="source-section">
-                        <div className="section-header">
-                            <span className="icon">📄</span>
-                            <h3>Resume / CV</h3>
+                    <div className="glass-panel p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <FileText size={18} className="text-purple-400" />
+                            <h3 className="font-semibold text-white text-sm">Resume / CV</h3>
                         </div>
                         <div
-                            className={`file-drop-area ${cvFile ? 'has-file' : ''}`}
+                            className={clsx(
+                                "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
+                                cvFile ? "border-emerald-500/50 bg-emerald-500/5" : "border-white/10 hover:border-purple-500/50 hover:bg-white/5"
+                            )}
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <input
@@ -347,13 +320,15 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                                 hidden
                             />
                             {cvFile ? (
-                                <div className="file-info">
-                                    <span className="filename">{cvFile.name}</span>
-                                    <span className="change-text">(Click to change)</span>
+                                <div className="flex flex-col items-center gap-2">
+                                    <FileText className="text-emerald-400" size={24} />
+                                    <span className="text-sm font-medium text-emerald-400">{cvFile.name}</span>
+                                    <span className="text-xs text-slate-500">(Click to change)</span>
                                 </div>
                             ) : (
-                                <div className="upload-prompt">
-                                    <span>Click to upload PDF or DOCX</span>
+                                <div className="flex flex-col items-center gap-2">
+                                    <UploadCloud className="text-slate-400" size={24} />
+                                    <span className="text-sm text-slate-400">Click to upload PDF or DOCX</span>
                                 </div>
                             )}
                         </div>
@@ -362,274 +337,26 @@ export function TwinCreationForm({ onTwinCreated, loading }: TwinCreationFormPro
                     <button
                         type="submit"
                         disabled={isProcessing || loading}
-                        className="submit-btn"
+                        className="btn-neon w-full py-3.5 text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
                     >
                         {isProcessing ? (
-                            <span className="processing-status">
-                                <span className="spinner">⚡</span> {statusMessage}
-                            </span>
+                            <>
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                {statusMessage}
+                            </>
                         ) : (
-                            '🚀 Analyze & Create Twin'
+                            <>🚀 Analyze & Create Twin</>
                         )}
                     </button>
 
-                    <div className="privacy-shield">
-                        <span className="shield-icon">🛡️</span>
-                        <div className="shield-text">
-                            <strong>Privacy First</strong>
-                            <small>Data encrypted & stored on-device only</small>
-                        </div>
+                    <div className="flex items-center justify-center gap-2 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
+                        <Shield size={14} className="text-emerald-400" />
+                        <p className="text-xs text-slate-400">
+                            <strong className="text-emerald-400">Privacy First</strong>: Data stored on-device only
+                        </p>
                     </div>
                 </form>
             )}
-
-            <style jsx>{`
-                .twin-form {
-                    max-width: 520px;
-                    margin: 0 auto;
-                    padding: 2rem;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border-radius: 24px;
-                    color: white;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                }
-                .form-header {
-                    text-align: center;
-                    margin-bottom: 2rem;
-                }
-                .form-header h2 {
-                    font-size: 1.75rem;
-                    font-weight: 700;
-                    margin-bottom: 0.5rem;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                }
-                .form-header p {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-                .domain-selector {
-                    margin-bottom: 1.5rem;
-                }
-                .domain-selector label {
-                    display: block;
-                    margin-bottom: 0.75rem;
-                    font-weight: 500;
-                    color: rgba(255, 255, 255, 0.9);
-                }
-                .domain-buttons {
-                    display: flex;
-                    gap: 0.5rem;
-                }
-                .domain-btn {
-                    flex: 1;
-                    padding: 0.75rem;
-                    background: rgba(255, 255, 255, 0.1);
-                    border: 2px solid transparent;
-                    border-radius: 8px;
-                    color: white;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .domain-btn.active {
-                    background: rgba(102, 126, 234, 0.2);
-                    border-color: #667eea;
-                }
-                .mode-tabs {
-                    display: flex;
-                    margin-bottom: 1.5rem;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                }
-                .mode-tab {
-                    flex: 1;
-                    padding: 1rem;
-                    background: transparent;
-                    border: none;
-                    border-bottom: 2px solid transparent;
-                    color: rgba(255, 255, 255, 0.6);
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .mode-tab:hover {
-                    color: white;
-                }
-                .mode-tab.active {
-                    color: #667eea;
-                    border-bottom-color: #667eea;
-                }
-                .source-section {
-                    background: rgba(255, 255, 255, 0.05);
-                    padding: 1rem;
-                    border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                }
-                .section-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    margin-bottom: 0.75rem;
-                }
-                .section-header h3 {
-                    font-size: 1rem;
-                    font-weight: 600;
-                    margin: 0;
-                }
-                .input-group {
-                    margin-bottom: 0.5rem;
-                }
-                .link-row {
-                    display: flex;
-                    gap: 0.5rem;
-                }
-                .url-input {
-                    flex: 1;
-                    padding: 0.875rem;
-                    background: rgba(0, 0, 0, 0.2);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 8px;
-                    color: white;
-                }
-                .remove-btn {
-                    padding: 0 0.75rem;
-                    background: rgba(239, 68, 68, 0.2);
-                    color: #fca5a5;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 1.25rem;
-                }
-                .add-btn {
-                    background: transparent;
-                    border: 1px dashed rgba(255, 255, 255, 0.3);
-                    color: rgba(255, 255, 255, 0.7);
-                    width: 100%;
-                    padding: 0.5rem;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 0.875rem;
-                    transition: all 0.2s;
-                }
-                .add-btn:hover {
-                    border-color: #667eea;
-                    color: white;
-                }
-                .input-hint {
-                    font-size: 0.75rem;
-                    color: rgba(255, 255, 255, 0.4);
-                    margin-top: 0.5rem;
-                }
-
-                .file-drop-area {
-                    border: 2px dashed rgba(255, 255, 255, 0.2);
-                    border-radius: 8px;
-                    padding: 1.5rem;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    background: rgba(0, 0, 0, 0.2);
-                }
-                .file-drop-area:hover {
-                    border-color: #667eea;
-                    background: rgba(102, 126, 234, 0.1);
-                }
-                .file-drop-area.has-file {
-                    border-style: solid;
-                    border-color: #4ade80;
-                    background: rgba(74, 222, 128, 0.1);
-                }
-                .filename {
-                    font-weight: 600;
-                    color: #4ade80;
-                    display: block;
-                }
-                .change-text {
-                    font-size: 0.75rem;
-                    color: rgba(255, 255, 255, 0.6);
-                }
-                .divider {
-                    text-align: center;
-                    margin: 1rem 0;
-                    position: relative;
-                }
-                .divider span {
-                    background: #1a1a2e;
-                    padding: 0 1rem;
-                    color: rgba(255, 255, 255, 0.5);
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                }
-                .divider::before {
-                    content: '';
-                    position: absolute;
-                    left: 0;
-                    top: 50%;
-                    width: 100%;
-                    height: 1px;
-                    background: rgba(255, 255, 255, 0.1);
-                    z-index: -1;
-                }
-                .submit-btn {
-                    width: 100%;
-                    padding: 1rem;
-                    margin-top: 1.5rem;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border: none;
-                    border-radius: 8px;
-                    color: white;
-                    font-size: 1.125rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: transform 0.2s;
-                }
-                .submit-btn:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-                }
-                .submit-btn:disabled {
-                    opacity: 0.7;
-                    cursor: wait;
-                }
-                .error-message {
-                    background: rgba(239, 68, 68, 0.2);
-                    color: #fca5a5;
-                    padding: 0.75rem;
-                    border-radius: 8px;
-                    margin-bottom: 1rem;
-                    font-size: 0.875rem;
-                }
-                .privacy-shield {
-                    margin-top: 1.5rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
-                    padding: 0.75rem;
-                    background: rgba(16, 185, 129, 0.1);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    border-radius: 12px;
-                }
-                .shield-icon {
-                    font-size: 1.5rem;
-                }
-                .shield-text {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .shield-text strong {
-                    color: #34d399;
-                    font-size: 0.875rem;
-                }
-                .shield-text small {
-                    color: rgba(255, 255, 255, 0.6);
-                    font-size: 0.75rem;
-                }
-                .interview-intro {
-                    text-align: center;
-                    opacity: 0.8;
-                    font-size: 0.9rem;
-                    margin-bottom: 1rem;
-                }
-            `}</style>
         </div>
     );
 }
