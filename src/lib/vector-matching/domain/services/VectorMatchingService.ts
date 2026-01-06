@@ -7,7 +7,7 @@
  * This is the extracted, reusable core from LocalMatchingService.
  */
 
-import { IMatchingService, MatchRequest, MatchResult } from '../ports/IMatchingService';
+import { IMatchingService, MatchRequest, MatchResult } from '../../ports/IMatchingService';
 
 /**
  * Interface for items that can be matched

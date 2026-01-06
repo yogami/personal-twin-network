@@ -141,9 +141,7 @@ test.describe('Berlin AI Conference Scenario', () => {
         await page.goto('/demo');
 
         // Demo page should load correctly
-        await expect(page.locator('h1')).toContainText('Digital Twin').or(
-            expect(page.locator('h1')).toContainText('Activate')
-        );
+        await expect(page.locator('h1')).toHaveText(/Digital Twin|Activate/);
 
         // Should have the QR section
         await expect(page.locator('.qr-card, [class*="qr"]').first()).toBeVisible();
