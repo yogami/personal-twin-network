@@ -162,9 +162,24 @@ test.describe('CIC Demo Flow', () => {
     });
 });
 
-test.describe('STT Simulation', () => {
-    test('simulates voice input during interview', async ({ page }) => {
-        // Inject mock Speech Recognition before any logic runs
+test.describe('STT Simulation & AI Magic', () => {
+    test('simulates voice input and verifies AI-generated interests', async ({ page }) => {
+        // 1. Mock the Interview API to return 'interests'
+        await page.route('**/api/twin/interview', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    isComplete: true,
+                    nextQuestion: "That's great!",
+                    extractedProfile: {
+                        interests: ['AI/ML', 'Startups']
+                    }
+                })
+            });
+        });
+
+        // 2. Inject mock Speech Recognition
         await page.addInitScript(() => {
             class MockRecognition {
                 onresult: any = null;
@@ -174,13 +189,12 @@ test.describe('STT Simulation', () => {
                 lang = 'en-US';
 
                 start() {
-                    // Simulate speaking delay
                     setTimeout(() => {
                         if (this.onresult) {
                             this.onresult({
                                 results: {
                                     0: {
-                                        0: { transcript: "I am looking for AI partners", confidence: 1 },
+                                        0: { transcript: "I love building AI startups", confidence: 1 },
                                         length: 1,
                                         isFinal: true
                                     },
@@ -190,7 +204,7 @@ test.describe('STT Simulation', () => {
                             });
                         }
                         if (this.onend) this.onend();
-                    }, 1500);
+                    }, 1000);
                 }
                 stop() { }
                 abort() { }
@@ -203,19 +217,21 @@ test.describe('STT Simulation', () => {
         await page.click('text=Get Started');
         await page.click('text=Skip'); // LinkedIn
 
-        await expect(page.locator('h2')).toContainText('Quick Voice');
-
         // Trigger microphone
         await page.click('.mic-btn:has-text("Speak")');
 
-        // Should show listening state
-        await expect(page.locator('.avatar-circle')).toHaveClass(/listening/);
+        // Wait for simulated transcript
+        await expect(page.locator('.user-transcript')).toContainText('AI startups', { timeout: 10000 });
 
-        // Wait for simulated transcript to appear
-        await expect(page.locator('.user-transcript')).toContainText('I am looking for AI partners', { timeout: 10000 });
+        // Wait for step transition to interests (AI should mark it complete)
+        await expect(page.locator('h2')).toContainText('Confirm Your Interests', { timeout: 15000 });
 
-        // Should stop listening
-        await expect(page.locator('.avatar-circle')).not.toHaveClass(/listening/);
+        // Check for MAGIC ✨ badges on pre-selected interests
+        await expect(page.locator('button:has-text("AI/ML") .ai-badge')).toBeVisible();
+        await expect(page.locator('button:has-text("Startups") .ai-badge')).toBeVisible();
+
+        // Other tags should NOT have sparkles
+        await expect(page.locator('button:has-text("FinTech") .ai-badge')).not.toBeVisible();
     });
 });
 

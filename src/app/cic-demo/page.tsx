@@ -79,6 +79,16 @@ export default function CICDemoPage() {
                 headline: result.profile.headline,
                 skills: result.profile.skills,
             });
+
+            // AI MAGIC: Pre-populate interests from extracted skills
+            const suggested = INTERESTS.filter(interest =>
+                result.profile?.skills.some(skill =>
+                    skill.toLowerCase().includes(interest.toLowerCase()) ||
+                    interest.toLowerCase().includes(skill.toLowerCase())
+                )
+            );
+            setSelectedInterests(prev => Array.from(new Set([...prev, ...suggested])));
+
             setStep('voice');
         } else {
             setError(result.error || 'Failed to extract profile');
@@ -88,8 +98,17 @@ export default function CICDemoPage() {
     };
 
     // Voice interview complete
-    const handleInterviewComplete = useCallback((extractedData: { lookingFor?: string }) => {
+    const handleInterviewComplete = useCallback((extractedData: { lookingFor?: string, interests?: string[] }) => {
         setVoiceData({ lookingFor: extractedData.lookingFor || '' });
+
+        // AI MAGIC: Pre-populate interests from voice analysis
+        if (extractedData.interests) {
+            const voiceSuggested = INTERESTS.filter(i =>
+                extractedData.interests?.some(ei => ei.toLowerCase().includes(i.toLowerCase()))
+            );
+            setSelectedInterests(prev => Array.from(new Set([...prev, ...voiceSuggested])));
+        }
+
         setStep('interests');
     }, []);
 
@@ -293,21 +312,25 @@ export default function CICDemoPage() {
                 {/* Interests Step */}
                 {step === 'interests' && (
                     <div className="step interests-step">
-                        <h2>What are you into?</h2>
+                        <h2>Confirm Your Interests</h2>
                         <p className="subtitle">
-                            Select topics you want to connect over
+                            AI suggested these based on your check-in. Tap to refine.
                         </p>
 
                         <div className="interests-grid">
-                            {INTERESTS.map((interest) => (
-                                <button
-                                    key={interest}
-                                    className={`interest-chip ${selectedInterests.includes(interest) ? 'selected' : ''}`}
-                                    onClick={() => toggleInterest(interest)}
-                                >
-                                    {interest}
-                                </button>
-                            ))}
+                            {INTERESTS.map((interest) => {
+                                const isSelected = selectedInterests.includes(interest);
+                                return (
+                                    <button
+                                        key={interest}
+                                        className={`interest-chip ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => toggleInterest(interest)}
+                                    >
+                                        {interest}
+                                        {isSelected && <span className="ai-badge">✨</span>}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         <button
@@ -315,7 +338,7 @@ export default function CICDemoPage() {
                             onClick={() => setStep('consent')}
                             disabled={selectedInterests.length === 0}
                         >
-                            Continue →
+                            Confirm & Continue →
                         </button>
                     </div>
                 )}
@@ -617,8 +640,22 @@ export default function CICDemoPage() {
                 }
 
                 .interest-chip.selected {
-                    background: #667eea;
+                    background: rgba(102, 126, 234, 0.3);
                     border-color: #667eea;
+                    box-shadow: 0 0 15px rgba(102, 126, 234, 0.2);
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .ai-badge {
+                    font-size: 0.9rem;
+                    animation: sparkle 2s infinite ease-in-out;
+                }
+
+                @keyframes sparkle {
+                    0%, 100% { opacity: 0.5; transform: scale(0.9); }
+                    50% { opacity: 1; transform: scale(1.1); }
                 }
 
                 .consent-checkbox {
