@@ -162,6 +162,63 @@ test.describe('CIC Demo Flow', () => {
     });
 });
 
+test.describe('STT Simulation', () => {
+    test('simulates voice input during interview', async ({ page }) => {
+        // Inject mock Speech Recognition before any logic runs
+        await page.addInitScript(() => {
+            class MockRecognition {
+                onresult: any = null;
+                onend: any = null;
+                continuous = false;
+                interimResults = false;
+                lang = 'en-US';
+
+                start() {
+                    // Simulate speaking delay
+                    setTimeout(() => {
+                        if (this.onresult) {
+                            this.onresult({
+                                results: {
+                                    0: {
+                                        0: { transcript: "I am looking for AI partners", confidence: 1 },
+                                        length: 1,
+                                        isFinal: true
+                                    },
+                                    length: 1
+                                },
+                                resultIndex: 0
+                            });
+                        }
+                        if (this.onend) this.onend();
+                    }, 1500);
+                }
+                stop() { }
+                abort() { }
+            }
+            (window as any).webkitSpeechRecognition = MockRecognition;
+            (window as any).SpeechRecognition = MockRecognition;
+        });
+
+        await page.goto('/cic-demo');
+        await page.click('text=Get Started');
+        await page.click('text=Skip'); // LinkedIn
+
+        await expect(page.locator('h2')).toContainText('Quick Voice');
+
+        // Trigger microphone
+        await page.click('.mic-btn:has-text("Speak")');
+
+        // Should show listening state
+        await expect(page.locator('.avatar-circle')).toHaveClass(/listening/);
+
+        // Wait for simulated transcript to appear
+        await expect(page.locator('.user-transcript')).toContainText('I am looking for AI partners', { timeout: 10000 });
+
+        // Should stop listening
+        await expect(page.locator('.avatar-circle')).not.toHaveClass(/listening/);
+    });
+});
+
 test.describe('Admin Dashboard', () => {
     test('requires PIN to access', async ({ page }) => {
         await page.goto('/admin');
