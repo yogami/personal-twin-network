@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { QrCode, X } from 'lucide-react';
 
 // ============================================================================
 // Types
@@ -31,6 +33,7 @@ export default function AdminPage() {
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showJoinQR, setShowJoinQR] = useState(false);
 
     const ADMIN_PIN = 'CIC2025';
 
@@ -182,6 +185,9 @@ export default function AdminPage() {
                     <span className="live-badge">● LIVE</span>
                 </div>
                 <div className="header-right">
+                    <button onClick={() => setShowJoinQR(true)} className="qr-btn">
+                        <QrCode size={18} /> Presentation QR
+                    </button>
                     <button onClick={handleSeed} className="seed-btn">
                         🌱 Seed Demo Data
                     </button>
@@ -263,7 +269,85 @@ export default function AdminPage() {
                 </p>
             </div>
 
+            {/* Join QR Modal */}
+            {showJoinQR && (
+                <div className="qr-modal-overlay" onClick={() => setShowJoinQR(false)}>
+                    <div className="qr-modal" onClick={e => e.stopPropagation()}>
+                        <button className="close-btn" onClick={() => setShowJoinQR(false)}>
+                            <X size={24} />
+                        </button>
+                        <h2>Scan to Join CIC Demo</h2>
+                        <div className="qr-container">
+                            <QRCodeSVG
+                                value="https://personal-twin-network-production.up.railway.app/cic-demo"
+                                size={400}
+                                level="H"
+                                includeMargin={true}
+                                imageSettings={{
+                                    src: "https://cic-berlin.de/wp-content/uploads/2021/03/CIC_Logo_Square_RGB.png",
+                                    x: undefined,
+                                    y: undefined,
+                                    height: 40,
+                                    width: 40,
+                                    excavate: true,
+                                }}
+                            />
+                        </div>
+                        <p className="qr-url">personal-twin-network-production.up.railway.app/cic-demo</p>
+                    </div>
+                </div>
+            )}
+
             <style jsx>{`
+                .qr-modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0,0,0,0.9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    backdrop-blur: 10px;
+                }
+                .qr-modal {
+                    background: white;
+                    padding: 3rem;
+                    border-radius: 32px;
+                    text-align: center;
+                    color: #0a0a1f;
+                    position: relative;
+                }
+                .close-btn {
+                    position: absolute;
+                    top: 1rem;
+                    right: 1.5rem;
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: #0a0a1f;
+                }
+                .qr-container {
+                    margin: 2rem 0;
+                    padding: 1rem;
+                    background: white;
+                    border-radius: 12px;
+                }
+                .qr-url {
+                    font-family: monospace;
+                    font-weight: bold;
+                    color: #667eea;
+                }
+                .qr-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.5rem 1rem;
+                    background: #667eea;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                }
                 .admin-dashboard {
                     min-height: 100vh;
                     background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 100%);

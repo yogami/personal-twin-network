@@ -15,7 +15,7 @@ import { Camera, CheckCircle, RotateCcw, XCircle, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 export interface QRScanResult {
-    type: 'cic-activation' | 'peer-payload' | 'unknown';
+    type: 'cic-activation' | 'peer-payload' | 'linkedin-profile' | 'unknown';
     rawData: string;
     parsedData?: {
         eventId?: string;
@@ -23,6 +23,7 @@ export interface QRScanResult {
         attendeeRole?: string;
         roomId?: string;
         publicKey?: string;
+        linkedinUrl?: string;
     };
 }
 
@@ -70,6 +71,17 @@ export function parseQRContent(content: string): QRScanResult {
         }
     } catch {
         // Not a peer payload
+    }
+
+    // Check for LinkedIn profile URL
+    if (content.includes('linkedin.com/in/')) {
+        return {
+            type: 'linkedin-profile',
+            rawData: content,
+            parsedData: {
+                linkedinUrl: content
+            }
+        };
     }
 
     return { type: 'unknown', rawData: content };

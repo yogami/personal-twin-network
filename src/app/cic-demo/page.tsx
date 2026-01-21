@@ -6,7 +6,8 @@ import { getGuestIdentityService, GuestIdentity } from '@/application/services/G
 import { extractLinkedInProfile, isValidLinkedInUrl } from '@/application/services/LinkedInExtractor';
 import { TwinInterview } from '@/presentation/components/TwinInterview';
 import { PrivacyBadge } from '@/presentation/components/PrivacyIndicator';
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield, Sparkles, QrCode, X, Camera } from 'lucide-react';
+import { QRScanner, QRScanResult } from '@/presentation/components/QRScanner';
 
 // ============================================================================
 // Types
@@ -102,6 +103,7 @@ export default function CICDemoPage() {
     const [matches, setMatches] = useState<MatchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showLinkedInScanner, setShowLinkedInScanner] = useState(false);
 
     // Initialize guest identity
     useEffect(() => {
@@ -148,7 +150,18 @@ export default function CICDemoPage() {
         setIsLoading(false);
     };
 
-    // Voice interview complete
+    // Voice interview complete    // QR Scan handler
+    const handleQRScan = (result: QRScanResult) => {
+        if (result.type === 'linkedin-profile' && result.parsedData?.linkedinUrl) {
+            setLinkedinUrl(result.parsedData.linkedinUrl);
+            setShowLinkedInScanner(false);
+            // Auto-trigger extract after scanning
+            setTimeout(() => {
+                const extractBtn = document.getElementById('extract-trigger');
+                extractBtn?.click();
+            }, 100);
+        }
+    };
     const handleInterviewComplete = useCallback((extractedData: { lookingFor?: string, interests?: string[] }) => {
         setVoiceData({ lookingFor: extractedData.lookingFor || '' });
 
@@ -289,7 +302,17 @@ export default function CICDemoPage() {
                 {step === 'linkedin' && (
                     <div className="step linkedin-step">
                         <h2>Import Identity</h2>
-                        <p className="subtitle">LinkedIn URL for auto-calibration</p>
+                        <p className="subtitle">Scan your LinkedIn QR or paste URL</p>
+
+                        <button
+                            className="scan-qr-btn"
+                            onClick={() => setShowLinkedInScanner(true)}
+                        >
+                            <Camera size={20} /> Scan LinkedIn QR
+                        </button>
+
+                        <div className="divider"><span>OR</span></div>
+
                         <div className="input-group">
                             <input
                                 type="url"
@@ -298,12 +321,33 @@ export default function CICDemoPage() {
                                 onChange={(e) => setLinkedinUrl(e.target.value)}
                                 className="linkedin-input"
                             />
-                            <button className="extract-btn" onClick={handleLinkedInExtract} disabled={isLoading}>
+                            <button
+                                id="extract-trigger"
+                                className="extract-btn"
+                                onClick={handleLinkedInExtract}
+                                disabled={isLoading}
+                            >
                                 {isLoading ? '...' : 'Extract'}
                             </button>
                         </div>
                         {error && <p className="error-text">{error}</p>}
                         <button className="skip-btn" onClick={handleSkipLinkedIn}>Skip</button>
+
+                        {showLinkedInScanner && (
+                            <div className="qr-modal-overlay">
+                                <div className="qr-modal">
+                                    <button className="close-btn" onClick={() => setShowLinkedInScanner(false)}>
+                                        <X size={24} />
+                                    </button>
+                                    <h3>Scan LinkedIn QR</h3>
+                                    <p>Open LinkedIn app → Search → QR Icon</p>
+                                    <div className="scanner-wrapper">
+                                        <QRScanner onScan={handleQRScan} active={showLinkedInScanner} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="privacy-note">
                             <PrivacyBadge isPrivate={true} />
                             <span>Read-only extraction. No storage.</span>
@@ -378,6 +422,71 @@ export default function CICDemoPage() {
                 .promise-text span { font-size: 0.8rem; }
                 .consent-quick { display: flex; gap: 0.5rem; background: #111; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; font-size: 0.85rem; }
                 .primary-btn { width: 100%; padding: 1rem; border-radius: 12px; border: none; background: #667eea; color: white; cursor: pointer; font-weight: bold; }
+                .scan-qr-btn {
+                    width: 100%;
+                    padding: 1rem;
+                    background: #222;
+                    border: 1px solid #444;
+                    border-radius: 12px;
+                    color: white;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.75rem;
+                    cursor: pointer;
+                    margin-bottom: 1.5rem;
+                }
+                .divider {
+                    display: flex;
+                    align-items: center;
+                    text-align: center;
+                    margin: 1rem 0;
+                    color: #444;
+                }
+                .divider::before, .divider::after {
+                    content: '';
+                    flex: 1;
+                    border-bottom: 1px solid #222;
+                }
+                .divider span {
+                    padding: 0 1rem;
+                    font-size: 0.8rem;
+                }
+                .qr-modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0,0,0,0.9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 2000;
+                    padding: 1.5rem;
+                }
+                .qr-modal {
+                    background: #111;
+                    padding: 2rem;
+                    border-radius: 24px;
+                    width: 100%;
+                    max-width: 400px;
+                    text-align: center;
+                    position: relative;
+                }
+                .qr-modal h3 { margin-bottom: 0.5rem; }
+                .qr-modal p { font-size: 0.8rem; color: #888; margin-bottom: 1.5rem; }
+                .close-btn {
+                    position: absolute;
+                    top: 1rem;
+                    right: 1rem;
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                }
+                .scanner-wrapper {
+                    border-radius: 16px;
+                    overflow: hidden;
+                }
                 .primary-btn:disabled { opacity: 0.5; }
                 .input-group { display: flex; gap: 0.5rem; }
                 .linkedin-input { flex: 1; padding: 1rem; background: #111; border: 1px solid #333; color: white; border-radius: 12px; }
