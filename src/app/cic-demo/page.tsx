@@ -135,7 +135,10 @@ export default function CICDemoPage() {
 
             if (data.success) {
                 setMatches(data.matches || []);
-                setStep('results');
+                // Artificial delay for matching animation "theater"
+                setTimeout(() => {
+                    setStep('results');
+                }, 1500);
             } else {
                 setError('Failed to find matches');
                 setStep('consent');
