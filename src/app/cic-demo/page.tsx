@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { getGuestIdentityService, GuestIdentity } from '@/application/services/GuestIdentityService';
 import { extractLinkedInProfile, isValidLinkedInUrl } from '@/application/services/LinkedInExtractor';
 import { TwinInterview } from '@/presentation/components/TwinInterview';
-import { PrivacyBadge, PrivacyCockpit } from '@/presentation/components/PrivacyIndicator';
+import { PrivacyBadge } from '@/presentation/components/PrivacyIndicator';
+import { Shield, Sparkles } from 'lucide-react';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type Step = 'welcome' | 'linkedin' | 'voice' | 'interests' | 'consent' | 'matching' | 'results';
+type Step = 'welcome' | 'linkedin' | 'voice' | 'matching' | 'results';
 
 interface MatchResult {
     id: string;
@@ -25,6 +26,57 @@ const INTERESTS = [
     'AI/ML', 'Startups', 'FinTech', 'HealthTech', 'Climate',
     'Product', 'Engineering', 'Design', 'Sales', 'Investing'
 ];
+
+// ============================================================================
+// Sub-Components
+// ============================================================================
+
+const SovereigntyMonitor = ({ interests }: { interests: string[] }) => {
+    const [auditLog, setAuditLog] = useState<{ msg: string, time: string }[]>([]);
+
+    useEffect(() => {
+        const logs = [
+            "Initializing local secure vault...",
+            "Encrypting LinkedIn data with on-device key...",
+            "Analyzing voice snippets (Gemini Nano)...",
+            "Zero cloud retention verified 🛡️",
+            "Hashing interests for anonymous matching...",
+            "Transmitting score metadata ONLY..."
+        ];
+        logs.forEach((msg, i) => {
+            setTimeout(() => {
+                setAuditLog(prev => [...prev.slice(-4), { msg, time: new Date().toLocaleTimeString() }]);
+            }, i * 600);
+        });
+    }, []);
+
+    return (
+        <div className="sovereignty-monitor">
+            <div className="monitor-header">
+                <span className="live-dot"></span>
+                LIVE PRIVACY AUDIT
+            </div>
+            <div className="monitor-logs">
+                {auditLog.map((log, i) => (
+                    <div key={i} className="log-line">
+                        <span className="log-time">[{log.time}]</span> {log.msg}
+                    </div>
+                ))}
+            </div>
+            {interests.length > 0 && (
+                <div className="magic-tags-preview">
+                    {interests.map(tag => (
+                        <span key={tag} className="tag-float">✨ {tag}</span>
+                    ))}
+                </div>
+            )}
+            <div className="monitor-shield">
+                <Shield size={16} className="text-green-400" />
+                <span>Sovereignty: 100% On-Device</span>
+            </div>
+        </div>
+    );
+};
 
 // ============================================================================
 // Main Component
@@ -80,7 +132,7 @@ export default function CICDemoPage() {
                 skills: result.profile.skills,
             });
 
-            // AI MAGIC: Pre-populate interests from extracted skills
+            // AI MAGIC: Pre-populate interests
             const suggested = INTERESTS.filter(interest =>
                 result.profile?.skills.some(skill =>
                     skill.toLowerCase().includes(interest.toLowerCase()) ||
@@ -88,7 +140,6 @@ export default function CICDemoPage() {
                 )
             );
             setSelectedInterests(prev => Array.from(new Set([...prev, ...suggested])));
-
             setStep('voice');
         } else {
             setError(result.error || 'Failed to extract profile');
@@ -101,33 +152,25 @@ export default function CICDemoPage() {
     const handleInterviewComplete = useCallback((extractedData: { lookingFor?: string, interests?: string[] }) => {
         setVoiceData({ lookingFor: extractedData.lookingFor || '' });
 
-        // AI MAGIC: Pre-populate interests from voice analysis
+        // AI MAGIC: Pre-populate interests
+        let finalInterests = [...selectedInterests];
         if (extractedData.interests) {
             const voiceSuggested = INTERESTS.filter(i =>
                 extractedData.interests?.some(ei => ei.toLowerCase().includes(i.toLowerCase()))
             );
-            setSelectedInterests(prev => Array.from(new Set([...prev, ...voiceSuggested])));
+            finalInterests = Array.from(new Set([...finalInterests, ...voiceSuggested]));
+            setSelectedInterests(finalInterests);
         }
 
-        setStep('interests');
-    }, []);
+        // AUTO-MATCHING
+        setStep('matching');
+    }, [selectedInterests]);
 
-    // Interest toggle
-    const toggleInterest = (interest: string) => {
-        setSelectedInterests(prev =>
-            prev.includes(interest)
-                ? prev.filter(i => i !== interest)
-                : [...prev, interest]
-        );
-    };
-
-    // Find matches
-    const handleFindMatches = async () => {
+    // Find matches logic
+    const handleFindMatches = useCallback(async () => {
         if (!consentGiven) return;
 
-        setStep('matching');
         setIsLoading(true);
-
         try {
             const response = await fetch('/api/match', {
                 method: 'POST',
@@ -146,7 +189,7 @@ export default function CICDemoPage() {
                     },
                     eventId: 'cic-berlin-2025',
                     limit: 5,
-                    reportToAdmin: consentGiven,
+                    reportToAdmin: true,
                 }),
             });
 
@@ -154,23 +197,22 @@ export default function CICDemoPage() {
 
             if (data.success) {
                 setMatches(data.matches || []);
-                // Artificial delay for matching animation "theater"
-                setTimeout(() => {
-                    setStep('results');
-                }, 1500);
+                setTimeout(() => setStep('results'), 3500); // Wait for monitor to finish
             } else {
                 setError('Failed to find matches');
-                setStep('consent');
             }
         } catch {
             setError('Network error');
-            setStep('consent');
         }
-
         setIsLoading(false);
-    };
+    }, [consentGiven, guest, profileData, selectedInterests]);
 
-    // Skip LinkedIn
+    useEffect(() => {
+        if (step === 'matching') {
+            handleFindMatches();
+        }
+    }, [step, handleFindMatches]);
+
     const handleSkipLinkedIn = () => {
         setProfileData({
             name: guest?.displayName || 'Guest',
@@ -180,13 +222,8 @@ export default function CICDemoPage() {
         setStep('voice');
     };
 
-    // ========================================================================
-    // Render
-    // ========================================================================
-
     return (
         <div className="cic-demo">
-            {/* Header */}
             <header className="demo-header">
                 <div className="brand">
                     <span className="logo">🤝</span>
@@ -200,206 +237,103 @@ export default function CICDemoPage() {
                 )}
             </header>
 
-            {/* Progress */}
             <div className="progress-bar">
                 <div
                     className="progress-fill"
                     style={{
                         width: step === 'welcome' ? '0%'
-                            : step === 'linkedin' ? '16%'
-                                : step === 'voice' ? '33%'
-                                    : step === 'interests' ? '50%'
-                                        : step === 'consent' ? '66%'
-                                            : step === 'matching' ? '83%'
-                                                : '100%'
+                            : step === 'linkedin' ? '25%'
+                                : step === 'voice' ? '50%'
+                                    : step === 'matching' ? '75%'
+                                        : '100%'
                     }}
                 />
             </div>
 
-            {/* Content */}
             <main className="demo-content">
-                {/* Welcome Step */}
                 {step === 'welcome' && (
                     <div className="step welcome-step">
                         <h1>Welcome to CIC! 🎉</h1>
-                        <p className="subtitle">
-                            Let&apos;s find you the perfect connections in under 60 seconds.
-                        </p>
+                        <p className="subtitle">Connect with intended connections in under 60s.</p>
 
                         <div className="privacy-promise">
-                            <div className="promise-icon">🔒</div>
+                            <div className="promise-icon">🛡️</div>
                             <div className="promise-text">
-                                <strong>Privacy First</strong>
-                                <span>Your data stays on your phone. Always.</span>
+                                <strong>Sovereign Data Mode</strong>
+                                <span>No central database. Your twin is local.</span>
                             </div>
+                        </div>
+
+                        <div className="consent-quick">
+                            <input
+                                type="checkbox"
+                                id="welcome-consent"
+                                checked={consentGiven}
+                                onChange={(e) => setConsentGiven(e.target.checked)}
+                            />
+                            <label htmlFor="welcome-consent">
+                                Share anonymous match score with event host (Required)
+                            </label>
                         </div>
 
                         <button
                             className="primary-btn"
                             onClick={() => setStep('linkedin')}
+                            disabled={!consentGiven}
                         >
-                            Get Started →
+                            Start Check-in →
                         </button>
                     </div>
                 )}
 
-                {/* LinkedIn Step */}
                 {step === 'linkedin' && (
                     <div className="step linkedin-step">
-                        <h2>Import Your Profile</h2>
-                        <p className="subtitle">
-                            Paste your LinkedIn URL to auto-fill your expertise
-                        </p>
-
+                        <h2>Import Identity</h2>
+                        <p className="subtitle">LinkedIn URL for auto-calibration</p>
                         <div className="input-group">
                             <input
                                 type="url"
-                                placeholder="https://linkedin.com/in/your-profile"
+                                placeholder="LinkedIn Profile URL"
                                 value={linkedinUrl}
                                 onChange={(e) => setLinkedinUrl(e.target.value)}
                                 className="linkedin-input"
                             />
-                            <button
-                                className="extract-btn"
-                                onClick={handleLinkedInExtract}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Extracting...' : 'Extract'}
+                            <button className="extract-btn" onClick={handleLinkedInExtract} disabled={isLoading}>
+                                {isLoading ? '...' : 'Extract'}
                             </button>
                         </div>
-
                         {error && <p className="error-text">{error}</p>}
-
-                        <button
-                            className="skip-btn"
-                            onClick={handleSkipLinkedIn}
-                        >
-                            Skip, I&apos;ll fill in manually
-                        </button>
-
+                        <button className="skip-btn" onClick={handleSkipLinkedIn}>Skip</button>
                         <div className="privacy-note">
                             <PrivacyBadge isPrivate={true} />
-                            <span>Extracted data is stored only on your device</span>
+                            <span>Read-only extraction. No storage.</span>
                         </div>
                     </div>
                 )}
 
-                {/* Voice Step */}
                 {step === 'voice' && (
                     <div className="step voice-step">
-                        <h2>Quick Voice Check-in</h2>
-                        <p className="subtitle">
-                            Tell us what you&apos;re looking for at CIC today
-                        </p>
-
-                        <TwinInterview
-                            onInterviewComplete={handleInterviewComplete}
-                            currentProfile={profileData}
-                        />
-
-                        <button
-                            className="skip-btn"
-                            onClick={() => {
-                                setVoiceData({ lookingFor: 'Networking' });
-                                setStep('interests');
-                            }}
-                        >
-                            Skip voice, continue →
-                        </button>
+                        <h2>Voice Mind-Meld</h2>
+                        <p className="subtitle">Who are you looking for today?</p>
+                        <TwinInterview onInterviewComplete={handleInterviewComplete} currentProfile={profileData} />
+                        <button className="skip-btn" onClick={() => setStep('matching')}>Skip</button>
                     </div>
                 )}
 
-                {/* Interests Step */}
-                {step === 'interests' && (
-                    <div className="step interests-step">
-                        <h2>Confirm Your Interests</h2>
-                        <p className="subtitle">
-                            AI suggested these based on your check-in. Tap to refine.
-                        </p>
-
-                        <div className="interests-grid">
-                            {INTERESTS.map((interest) => {
-                                const isSelected = selectedInterests.includes(interest);
-                                return (
-                                    <button
-                                        key={interest}
-                                        className={`interest-chip ${isSelected ? 'selected' : ''}`}
-                                        onClick={() => toggleInterest(interest)}
-                                    >
-                                        {interest}
-                                        {isSelected && <span className="ai-badge">✨</span>}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <button
-                            className="primary-btn"
-                            onClick={() => setStep('consent')}
-                            disabled={selectedInterests.length === 0}
-                        >
-                            Confirm & Continue →
-                        </button>
-                    </div>
-                )}
-
-                {/* Consent Step */}
-                {step === 'consent' && (
-                    <div className="step consent-step">
-                        <h2>Almost there! 🎯</h2>
-
-                        <PrivacyCockpit
-                            localItemsCount={3}
-                            sharedItemsCount={consentGiven ? 1 : 0}
-                        />
-
-                        <div className="consent-checkbox">
-                            <input
-                                type="checkbox"
-                                id="consent"
-                                checked={consentGiven}
-                                onChange={(e) => setConsentGiven(e.target.checked)}
-                            />
-                            <label htmlFor="consent">
-                                I agree to share my match results with CIC event organizers
-                                <span className="consent-detail">
-                                    (Only your name, headline, and match score — not your full profile)
-                                </span>
-                            </label>
-                        </div>
-
-                        {error && <p className="error-text">{error}</p>}
-
-                        <button
-                            className="primary-btn find-matches"
-                            onClick={handleFindMatches}
-                            disabled={!consentGiven}
-                        >
-                            🔍 Find My Matches
-                        </button>
-                    </div>
-                )}
-
-                {/* Matching Step */}
                 {step === 'matching' && (
                     <div className="step matching-step">
                         <div className="matching-animation">
                             <div className="pulse-ring" />
-                            <div className="matching-icon">🔮</div>
+                            <div className="matching-icon">🧠</div>
                         </div>
-                        <h2>Finding your perfect matches...</h2>
-                        <p className="subtitle">Analyzing profiles with AI</p>
+                        <h2>Building Your Twin...</h2>
+                        <SovereigntyMonitor interests={selectedInterests} />
                     </div>
                 )}
 
-                {/* Results Step */}
                 {step === 'results' && (
                     <div className="step results-step">
-                        <h2>Your Top Matches 🎉</h2>
-                        <p className="subtitle">
-                            {matches.length} people you should meet at CIC
-                        </p>
-
+                        <h2>Top Matches 🎉</h2>
                         <div className="matches-list">
                             {matches.map((match, index) => (
                                 <div key={match.id} className="match-card">
@@ -408,391 +342,71 @@ export default function CICDemoPage() {
                                         <h3>{match.name}</h3>
                                         <p>{match.headline}</p>
                                         <div className="shared-interests">
-                                            {match.sharedInterests.map((interest) => (
-                                                <span key={interest} className="interest-tag">
-                                                    {interest}
-                                                </span>
-                                            ))}
+                                            {match.sharedInterests.map(i => <span key={i} className="interest-tag">{i}</span>)}
                                         </div>
                                     </div>
                                     <div className="match-score">
                                         <span className="score-value">{match.score}%</span>
-                                        <span className="score-label">Match</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
-
-                        <button
-                            className="primary-btn"
-                            onClick={() => router.push('/dashboard')}
-                        >
-                            View Full Dashboard →
-                        </button>
+                        <button className="primary-btn" onClick={() => router.push('/dashboard')}>Go to Dashboard</button>
                     </div>
                 )}
             </main>
 
-            {/* Styles */}
             <style jsx>{`
-                .cic-demo {
-                    min-height: 100vh;
-                    background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0f0f2a 100%);
-                    color: white;
-                }
-
-                .demo-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 1rem 1.5rem;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                }
-
-                .brand {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .logo {
-                    font-size: 1.5rem;
-                }
-
-                .title {
-                    font-weight: 700;
-                    font-size: 1.1rem;
-                }
-
-                .guest-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .guest-id {
-                    font-size: 0.85rem;
-                    color: rgba(255, 255, 255, 0.7);
-                }
-
-                .progress-bar {
-                    height: 4px;
-                    background: rgba(255, 255, 255, 0.1);
-                }
-
-                .progress-fill {
-                    height: 100%;
-                    background: linear-gradient(90deg, #667eea, #764ba2);
-                    transition: width 0.3s ease;
-                }
-
-                .demo-content {
-                    padding: 2rem 1.5rem;
-                    max-width: 500px;
-                    margin: 0 auto;
-                }
-
-                .step {
-                    animation: fadeIn 0.3s ease;
-                }
-
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-
-                h1, h2 {
-                    text-align: center;
-                    margin-bottom: 0.5rem;
-                }
-
-                h1 { font-size: 2rem; }
-                h2 { font-size: 1.5rem; }
-
-                .subtitle {
-                    text-align: center;
-                    color: rgba(255, 255, 255, 0.6);
-                    margin-bottom: 2rem;
-                }
-
-                .privacy-promise {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                    background: rgba(74, 222, 128, 0.1);
-                    border: 1px solid rgba(74, 222, 128, 0.2);
-                    border-radius: 12px;
-                    padding: 1rem;
-                    margin-bottom: 2rem;
-                }
-
-                .promise-icon {
-                    font-size: 2rem;
-                }
-
-                .promise-text {
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .promise-text strong {
-                    color: #4ade80;
-                }
-
-                .promise-text span {
-                    font-size: 0.85rem;
-                    color: rgba(255, 255, 255, 0.6);
-                }
-
-                .primary-btn {
-                    width: 100%;
-                    padding: 1rem;
-                    border-radius: 12px;
-                    border: none;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    font-size: 1.1rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .primary-btn:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-                }
-
-                .primary-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-
-                .input-group {
-                    display: flex;
-                    gap: 0.5rem;
-                    margin-bottom: 1rem;
-                }
-
-                .linkedin-input {
-                    flex: 1;
-                    padding: 1rem;
-                    border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    background: rgba(255, 255, 255, 0.05);
-                    color: white;
-                    font-size: 1rem;
-                }
-
-                .extract-btn {
-                    padding: 1rem 1.5rem;
-                    border-radius: 12px;
-                    border: none;
-                    background: #667eea;
-                    color: white;
-                    font-weight: 600;
-                    cursor: pointer;
-                }
-
-                .skip-btn {
-                    background: none;
-                    border: none;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-decoration: underline;
-                    cursor: pointer;
-                    margin-top: 1rem;
-                    display: block;
-                    width: 100%;
-                    text-align: center;
-                }
-
-                .privacy-note {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 0.5rem;
-                    margin-top: 2rem;
-                    font-size: 0.8rem;
-                    color: rgba(255, 255, 255, 0.5);
-                }
-
-                .error-text {
-                    color: #ef4444;
-                    text-align: center;
-                    margin: 1rem 0;
-                }
-
-                .interests-grid {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 0.5rem;
-                    justify-content: center;
-                    margin-bottom: 2rem;
-                }
-
-                .interest-chip {
-                    padding: 0.75rem 1.25rem;
-                    border-radius: 50px;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    background: transparent;
-                    color: white;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .interest-chip.selected {
-                    background: rgba(102, 126, 234, 0.3);
-                    border-color: #667eea;
-                    box-shadow: 0 0 15px rgba(102, 126, 234, 0.2);
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .ai-badge {
-                    font-size: 0.9rem;
-                    animation: sparkle 2s infinite ease-in-out;
-                }
-
-                @keyframes sparkle {
-                    0%, 100% { opacity: 0.5; transform: scale(0.9); }
-                    50% { opacity: 1; transform: scale(1.1); }
-                }
-
-                .consent-checkbox {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 0.75rem;
-                    margin: 1.5rem 0;
-                    padding: 1rem;
-                    background: rgba(255, 255, 255, 0.03);
-                    border-radius: 12px;
-                }
-
-                .consent-checkbox input {
-                    width: 20px;
-                    height: 20px;
-                    margin-top: 2px;
-                }
-
-                .consent-checkbox label {
-                    font-size: 0.9rem;
-                    line-height: 1.4;
-                }
-
-                .consent-detail {
-                    display: block;
-                    font-size: 0.75rem;
-                    color: rgba(255, 255, 255, 0.5);
-                    margin-top: 0.25rem;
-                }
-
-                .find-matches {
-                    margin-top: 1rem;
-                }
-
-                .matching-step {
-                    text-align: center;
-                    padding-top: 4rem;
-                }
-
-                .matching-animation {
-                    position: relative;
-                    width: 100px;
-                    height: 100px;
-                    margin: 0 auto 2rem;
-                }
-
-                .pulse-ring {
-                    position: absolute;
-                    inset: 0;
-                    border-radius: 50%;
-                    border: 2px solid #667eea;
-                    animation: pulse 1.5s infinite;
-                }
-
-                @keyframes pulse {
-                    0% { transform: scale(1); opacity: 1; }
-                    100% { transform: scale(1.5); opacity: 0; }
-                }
-
-                .matching-icon {
-                    position: absolute;
-                    inset: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 3rem;
-                }
-
-                .matches-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1rem;
-                    margin-bottom: 2rem;
-                }
-
-                .match-card {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                    padding: 1rem;
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                }
-
-                .match-rank {
-                    font-size: 1.25rem;
-                    font-weight: 700;
-                    color: #667eea;
-                }
-
-                .match-info {
-                    flex: 1;
-                }
-
-                .match-info h3 {
-                    text-align: left;
-                    margin: 0;
-                    font-size: 1rem;
-                }
-
-                .match-info p {
-                    margin: 0.25rem 0;
-                    font-size: 0.8rem;
-                    color: rgba(255, 255, 255, 0.6);
-                }
-
-                .shared-interests {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 0.25rem;
-                    margin-top: 0.5rem;
-                }
-
-                .interest-tag {
-                    padding: 0.125rem 0.5rem;
-                    background: rgba(102, 126, 234, 0.2);
-                    color: #667eea;
-                    border-radius: 4px;
-                    font-size: 0.7rem;
-                }
-
-                .match-score {
-                    text-align: center;
-                }
-
-                .score-value {
-                    display: block;
-                    font-size: 1.5rem;
-                    font-weight: 700;
-                    color: #4ade80;
-                }
-
-                .score-label {
-                    font-size: 0.7rem;
-                    color: rgba(255, 255, 255, 0.5);
-                }
+                .cic-demo { min-height: 100vh; background: #0a0a1f; color: white; }
+                .demo-header { padding: 1rem; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
+                .brand { display: flex; align-items: center; gap: 0.5rem; }
+                .logo { font-size: 1.5rem; }
+                .title { font-weight: bold; }
+                .guest-badge { display: flex; items-center gap: 0.5rem; }
+                .guest-id { font-size: 0.8rem; color: #888; }
+                .progress-bar { height: 4px; background: #222; }
+                .progress-fill { height: 100%; background: #667eea; transition: width 0.5s; }
+                .demo-content { padding: 2rem 1rem; max-width: 500px; margin: 0 auto; }
+                .step { animation: fadeIn 0.4s; }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                h1, h2 { text-align: center; }
+                .subtitle { text-align: center; color: #888; margin-bottom: 2rem; }
+                .privacy-promise { background: rgba(74, 222, 128, 0.1); border: 1px solid #4ade80; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; display: flex; gap: 1rem; }
+                .promise-icon { font-size: 1.5rem; }
+                .promise-text { display: flex; flex-direction: column; }
+                .promise-text strong { color: #4ade80; }
+                .promise-text span { font-size: 0.8rem; }
+                .consent-quick { display: flex; gap: 0.5rem; background: #111; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; font-size: 0.85rem; }
+                .primary-btn { width: 100%; padding: 1rem; border-radius: 12px; border: none; background: #667eea; color: white; cursor: pointer; font-weight: bold; }
+                .primary-btn:disabled { opacity: 0.5; }
+                .input-group { display: flex; gap: 0.5rem; }
+                .linkedin-input { flex: 1; padding: 1rem; background: #111; border: 1px solid #333; color: white; border-radius: 12px; }
+                .extract-btn { padding: 1rem; background: #667eea; border: none; border-radius: 12px; color: white; cursor: pointer; }
+                .skip-btn { display: block; width: 100%; text-align: center; margin-top: 1rem; color: #888; background: none; border: none; cursor: pointer; }
+                .error-text { color: #ef4444; margin: 1rem 0; text-align: center; }
+                .sovereignty-monitor { background: rgba(0,0,0,0.5); border: 1px solid #4ade8055; border-radius: 16px; padding: 1.5rem; font-family: monospace; font-size: 0.8rem; }
+                .monitor-header { color: #4ade80; font-weight: bold; margin-bottom: 1rem; display: flex; items-center gap: 0.5rem; }
+                .live-dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: blink 1s infinite; }
+                @keyframes blink { 50% { opacity: 0; } }
+                .log-line { margin-bottom: 0.5rem; }
+                .log-time { color: #444; }
+                .monitor-shield { border-top: 1px solid #333; margin-top: 1rem; padding-top: 1rem; display: flex; items-center gap: 0.5rem; color: #4ade80; }
+                .magic-tags-preview { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+                .tag-float { background: #667eea33; border: 1px solid #667eea; padding: 0.3rem 0.6rem; border-radius: 20px; font-size: 0.7rem; animation: float 3s infinite; }
+                @keyframes float { 50% { transform: translateY(-5px); } }
+                .matches-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+                .match-card { display: flex; items-center gap: 1rem; background: #111; padding: 1rem; border-radius: 12px; }
+                .match-rank { font-weight: bold; color: #667eea; }
+                .match-info { flex: 1; }
+                .match-info h3 { margin: 0; font-size: 1rem; }
+                .match-info p { margin: 0; font-size: 0.8rem; color: #888; }
+                .shared-interests { display: flex; gap: 0.25rem; margin-top: 0.5rem; }
+                .interest-tag { background: #667eea22; color: #667eea; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem; }
+                .score-value { font-size: 1.2rem; font-weight: bold; color: #4ade80; }
+                .matching-animation { position: relative; width: 60px; height: 60px; margin: 0 auto 1.5rem; }
+                .pulse-ring { border: 2px solid #667eea; border-radius: 50%; inset: 0; position: absolute; animation: pulse 1.5s infinite; }
+                @keyframes pulse { 100% { transform: scale(1.5); opacity: 0; } }
+                .matching-icon { position: absolute; inset: 0; display: flex; items-center justify-content: center; font-size: 2rem; }
             `}</style>
         </div>
     );

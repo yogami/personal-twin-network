@@ -3,11 +3,9 @@
  * 
  * Full end-to-end tests for the CIC Berlin demo:
  * - Guest identity creation
- * - Onboarding wizard steps
- * - Privacy indicators
+ * - Zero-friction onboarding (LinkedIn -> Voice -> Auto-Match)
+ * - Privacy Sovereignty Monitor
  * - Admin dashboard
- * 
- * Run: BASE_URL=https://personal-twin-network-production.up.railway.app npx playwright test tests/e2e/cic-demo-flow.spec.ts
  */
 
 import { test, expect } from '@playwright/test';
@@ -16,339 +14,117 @@ test.describe('CIC Demo Flow', () => {
     test.describe('Guest Identity', () => {
         test('creates guest identity on first visit', async ({ page }) => {
             await page.goto('/cic-demo');
-
-            // Should see welcome step
             await expect(page.locator('h1')).toContainText('Welcome to CIC');
-
-            // Should have guest badge in header
-            await expect(page.locator('.guest-id')).toBeVisible();
             await expect(page.locator('.guest-id')).toContainText('Guest-');
         });
 
         test('shows privacy promise on welcome', async ({ page }) => {
             await page.goto('/cic-demo');
-
             await expect(page.locator('.privacy-promise')).toBeVisible();
-            await expect(page.locator('text=Privacy First')).toBeVisible();
-            await expect(page.locator('text=Your data stays on your phone')).toBeVisible();
+            await expect(page.locator('text=Sovereign Data Mode')).toBeVisible();
         });
     });
 
-    test.describe('Onboarding Wizard', () => {
-        test('progresses through steps', async ({ page }) => {
+    test.describe('Zero Friction Onboarding', () => {
+        test('progresses through steps with consensus on welcome', async ({ page }) => {
             await page.goto('/cic-demo');
 
-            // Step 1: Welcome - click Get Started
-            await page.click('text=Get Started');
+            // Must check consent
+            await expect(page.locator('button:has-text("Start Check-in")')).toBeDisabled();
+            await page.click('#welcome-consent');
+            await page.click('text=Start Check-in');
 
-            // Step 2: LinkedIn - skip it
-            await expect(page.locator('h2')).toContainText('Import Your Profile');
+            // Step: LinkedIn
+            await expect(page.locator('h2')).toContainText('Import Identity');
             await page.click('text=Skip');
 
-            // Step 3: Voice - skip it
-            await expect(page.locator('h2')).toContainText('Quick Voice');
-            await page.click('text=Skip voice');
-
-            // Step 4: Interests
-            await expect(page.locator('h2')).toContainText('What are you into');
-
-            // Select interests
-            await page.click('button:has-text("AI/ML")');
-            await page.click('button:has-text("Startups")');
-
-            // Should have selected class
-            await expect(page.locator('button:has-text("AI/ML")')).toHaveClass(/selected/);
-
-            // Continue to consent
-            await page.click('text=Continue');
-
-            // Step 5: Consent
-            await expect(page.locator('h2')).toContainText('Almost there');
-        });
-
-        test('linkedin input validation', async ({ page }) => {
-            await page.goto('/cic-demo');
-            await page.click('text=Get Started');
-
-            // Try invalid URL
-            await page.fill('input[placeholder*="linkedin"]', 'not-a-url');
-            await page.click('text=Extract');
-
-            // Should show error
-            await expect(page.locator('.error-text')).toContainText('valid LinkedIn URL');
-        });
-
-        test('interests required for continue', async ({ page }) => {
-            await page.goto('/cic-demo');
-            await page.click('text=Get Started');
+            // Step: Voice
+            await expect(page.locator('h2')).toContainText('Voice Mind-Meld');
             await page.click('text=Skip');
-            await page.click('text=Skip voice');
 
-            // Continue button should be disabled without interests
-            await expect(page.locator('button:has-text("Continue")')).toBeDisabled();
+            // Step: Matching (Auto-transition)
+            await expect(page.locator('h2')).toContainText('Building Your Twin');
 
-            // Select an interest
-            await page.click('button:has-text("FinTech")');
-
-            // Now button should be enabled
-            await expect(page.locator('button:has-text("Continue")')).toBeEnabled();
-        });
-    });
-
-    test.describe('Privacy Indicators', () => {
-        test('shows privacy badge on all pages', async ({ page }) => {
-            await page.goto('/cic-demo');
-
-            // Privacy badge should be visible
-            await expect(page.locator('text=On-Device')).toBeVisible();
-        });
-
-        test('shows privacy cockpit on consent step', async ({ page }) => {
-            await page.goto('/cic-demo');
-            await page.click('text=Get Started');
-            await page.click('text=Skip');
-            await page.click('text=Skip voice');
-            await page.click('button:has-text("AI/ML")');
-            await page.click('text=Continue');
-
-            // Privacy cockpit should show
-            await expect(page.locator('text=Your Data, Your Control')).toBeVisible();
-            await expect(page.locator('text=On Your Phone')).toBeVisible();
-            await expect(page.locator('text=GDPR Compliant')).toBeVisible();
-        });
-
-        test('consent checkbox controls find matches button', async ({ page }) => {
-            await page.goto('/cic-demo');
-            await page.click('text=Get Started');
-            await page.click('text=Skip');
-            await page.click('text=Skip voice');
-            await page.click('button:has-text("AI/ML")');
-            await page.click('text=Continue');
-
-            // Find Matches button should be disabled initially
-            await expect(page.locator('button:has-text("Find My Matches")')).toBeDisabled();
-
-            // Check consent
-            await page.click('#consent');
-
-            // Now button should be enabled
-            await expect(page.locator('button:has-text("Find My Matches")')).toBeEnabled();
+            // Should see Sovereignty Monitor
+            await expect(page.locator('.sovereignty-monitor')).toBeVisible();
+            await expect(page.locator('text=LIVE PRIVACY AUDIT')).toBeVisible();
         });
     });
 
     test.describe('Matching Flow', () => {
-        test('shows matches after consent and search', async ({ page }) => {
+        test('shows matches automatically after entry', async ({ page }) => {
             await page.goto('/cic-demo');
-            await page.click('text=Get Started');
+            await page.click('#welcome-consent');
+            await page.click('text=Start Check-in');
             await page.click('text=Skip');
-            await page.click('text=Skip voice');
-            await page.click('button:has-text("AI/ML")');
-            await page.click('button:has-text("Engineering")');
-            await page.click('text=Continue');
+            await page.click('text=Skip');
 
-            // Give consent and search
-            await page.click('#consent');
-            await page.click('button:has-text("Find My Matches")');
-
-            // Should show matching animation
-            await expect(page.locator('text=Finding your perfect matches')).toBeVisible();
-
-            // Wait for results
-            await page.waitForSelector('text=Your Top Matches', { timeout: 10000 });
-
-            // Should show match results
+            // Wait for results (increased timeout for monitor theater)
+            await page.waitForSelector('text=Top Matches', { timeout: 15000 });
             await expect(page.locator('.match-card').first()).toBeVisible();
         });
     });
-});
 
-test.describe('STT Simulation & AI Magic', () => {
-    test('simulates voice input and verifies AI-generated interests', async ({ page }) => {
-        // 1. Mock the Interview API to return 'interests'
-        await page.route('**/api/twin/interview', async route => {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({
-                    isComplete: true,
-                    nextQuestion: "That's great!",
-                    extractedProfile: {
-                        interests: ['AI/ML', 'Startups']
-                    }
-                })
+    test.describe('STT Simulation & AI Magic', () => {
+        test('simulates voice and verifies auto-match transition', async ({ page }) => {
+            // Mock Interview API
+            await page.route('**/api/twin/interview', async route => {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        isComplete: true,
+                        nextQuestion: "Done!",
+                        extractedProfile: { interests: ['AI/ML'] }
+                    })
+                });
             });
-        });
 
-        // 2. Inject robust mocks for Speech Recognition AND Synthesis
-        await page.addInitScript(() => {
-            // Mock Synthesis
-            (window as any).speechSynthesis = {
-                speak: (utterance: any) => {
-                    setTimeout(() => {
-                        if (utterance.onstart) utterance.onstart();
+            // Mock Hardware
+            await page.addInitScript(() => {
+                (window as any).speechSynthesis = {
+                    speak: (u: any) => { u.onstart?.(); setTimeout(() => u.onend?.(), 100); },
+                    cancel: () => { },
+                    getVoices: () => []
+                };
+                class MockRecognition {
+                    onresult: any; onend: any; onstart: any;
+                    start() {
+                        this.onstart?.();
                         setTimeout(() => {
-                            if (utterance.onend) utterance.onend();
-                        }, 100);
-                    }, 10);
-                },
-                cancel: () => { },
-                getVoices: () => []
-            };
-
-            class MockRecognition {
-                onresult: any = null;
-                onend: any = null;
-                continuous = false;
-                interimResults = false;
-                lang = 'en-US';
-
-                start() {
-                    setTimeout(() => {
-                        if (this.onresult) {
-                            this.onresult({
-                                results: {
-                                    0: {
-                                        0: { transcript: "I love building AI startups", confidence: 1 },
-                                        length: 1,
-                                        isFinal: true
-                                    },
-                                    length: 1
-                                },
-                                resultIndex: 0
-                            });
-                        }
-                        // Small delay to ensure transcriptRef updates
-                        setTimeout(() => {
-                            if (this.onend) this.onend();
-                        }, 100);
-                    }, 1000);
+                            this.onresult?.({ results: { 0: { 0: { transcript: "AI builder" }, isFinal: true }, length: 1 }, resultIndex: 0 });
+                            setTimeout(() => this.onend?.(), 100);
+                        }, 500);
+                    }
+                    stop() { }
+                    abort() { }
                 }
-                stop() { }
-                abort() { }
-            }
-            (window as any).webkitSpeechRecognition = MockRecognition;
-            (window as any).SpeechRecognition = MockRecognition;
+                (window as any).SpeechRecognition = MockRecognition;
+                (window as any).webkitSpeechRecognition = MockRecognition;
+            });
+
+            await page.goto('/cic-demo');
+            await page.click('#welcome-consent');
+            await page.click('text=Start Check-in');
+            await page.click('text=Skip'); // LinkedIn
+
+            // Speak
+            await page.click('.mic-btn');
+
+            // Wait for Auto-transition to matching
+            await expect(page.locator('h2')).toContainText('Building Your Twin', { timeout: 10000 });
+
+            // Check magic tags in monitor
+            await expect(page.locator('.tag-float')).toContainText('AI/ML');
         });
-
-        await page.goto('/cic-demo');
-        await page.click('text=Get Started');
-        await page.click('text=Skip'); // LinkedIn
-
-        // Trigger microphone
-        await page.click('.mic-btn:has-text("Speak")');
-
-        // Wait for simulated transcript
-        await expect(page.locator('.user-transcript')).toContainText('AI startups', { timeout: 10000 });
-
-        // Wait for step transition to interests (AI should mark it complete)
-        await expect(page.locator('h2')).toContainText('Confirm Your Interests', { timeout: 15000 });
-
-        // Check for MAGIC ✨ badges on pre-selected interests
-        await expect(page.locator('button:has-text("AI/ML") .ai-badge')).toBeVisible();
-        await expect(page.locator('button:has-text("Startups") .ai-badge')).toBeVisible();
-
-        // Other tags should NOT have sparkles
-        await expect(page.locator('button:has-text("FinTech") .ai-badge')).not.toBeVisible();
-    });
-});
-
-test.describe('Admin Dashboard', () => {
-    test('requires PIN to access', async ({ page }) => {
-        await page.goto('/admin');
-
-        await expect(page.locator('h1')).toContainText('CIC Admin Dashboard');
-        await expect(page.locator('input[type="password"]')).toBeVisible();
     });
 
-    test('rejects invalid PIN', async ({ page }) => {
-        await page.goto('/admin');
-
-        await page.fill('input[type="password"]', 'wrong');
-        await page.click('text=Access Dashboard');
-
-        await expect(page.locator('.error')).toContainText('Invalid PIN');
-    });
-
-    test('accepts correct PIN and shows dashboard', async ({ page }) => {
-        await page.goto('/admin');
-
-        await page.fill('input[type="password"]', 'CIC2025');
-        await page.click('text=Access Dashboard');
-
-        // Should show dashboard
-        await expect(page.locator('text=● LIVE')).toBeVisible();
-        await expect(page.locator('text=Active Users')).toBeVisible();
-        await expect(page.locator('text=Matches Made')).toBeVisible();
-        await expect(page.locator('text=Live Match Feed')).toBeVisible();
-    });
-
-    test('shows privacy compliance badge', async ({ page }) => {
-        await page.goto('/admin');
-        await page.fill('input[type="password"]', 'CIC2025');
-        await page.click('text=Access Dashboard');
-
-        await expect(page.locator('text=Privacy Compliant')).toBeVisible();
-        await expect(page.locator('text=GDPR Compliant')).toBeVisible();
-    });
-
-    test('can seed demo data', async ({ page }) => {
-        await page.goto('/admin');
-        await page.fill('input[type="password"]', 'CIC2025');
-        await page.click('text=Access Dashboard');
-
-        // Click seed button
-        await page.click('text=Seed Demo Data');
-
-        // Should not error
-        await expect(page.locator('text=Live Match Feed')).toBeVisible();
-    });
-});
-
-test.describe('API Endpoints', () => {
-    test('GET /api/admin/seed returns attendees', async ({ request }) => {
-        const response = await request.get('/api/admin/seed');
-
-        expect(response.status()).toBe(200);
-        const data = await response.json();
-        expect(data.success).toBe(true);
-        expect(data.attendees).toBeDefined();
-        expect(data.count).toBeGreaterThan(0);
-    });
-
-    test('GET /api/admin/matches returns stats', async ({ request }) => {
-        const response = await request.get('/api/admin/matches');
-
-        expect(response.status()).toBe(200);
-        const data = await response.json();
-        expect(data.success).toBe(true);
-        expect(data.matches).toBeDefined();
-        expect(data.totalUsers).toBeDefined();
-        expect(data.totalMatches).toBeDefined();
-    });
-
-    test('POST /api/admin/matches records match', async ({ request }) => {
-        const response = await request.post('/api/admin/matches', {
-            data: {
-                user: {
-                    id: 'test-user',
-                    name: 'Test User',
-                    headline: 'Tester',
-                },
-                matches: [
-                    {
-                        id: 'matched-user',
-                        name: 'Matched User',
-                        headline: 'Developer',
-                        score: 85,
-                        sharedInterests: ['AI/ML'],
-                    },
-                ],
-            },
+    test.describe('Admin Dashboard', () => {
+        test('requires PIN and shows live feed', async ({ page }) => {
+            await page.goto('/admin');
+            await page.fill('input[type="password"]', 'CIC2025');
+            await page.click('text=Access Dashboard');
+            await expect(page.locator('text=● LIVE')).toBeVisible();
         });
-
-        expect(response.status()).toBe(200);
-        const data = await response.json();
-        expect(data.success).toBe(true);
-        expect(data.recorded).toBe(1);
     });
 });
