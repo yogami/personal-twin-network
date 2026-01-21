@@ -129,13 +129,15 @@ export default function Home() {
                   >
                     <Zap size={20} className="fill-white" /> Create Your Twin
                   </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-8 py-4 rounded-xl border border-white/10 font-medium hover:border-white/30 transition-colors"
-                  >
-                    How It Works
-                  </motion.button>
+                  <Link href="/cic-demo">
+                    <motion.button
+                      whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                      whileTap={{ scale: 0.95 }}
+                      className="px-8 py-4 rounded-xl border border-white/10 font-medium hover:border-white/30 transition-colors flex items-center gap-2"
+                    >
+                      <Sparkles size={18} className="text-cyan-400" /> Enter Guest Demo
+                    </motion.button>
+                  </Link>
                 </div>
               )}
             </AnimatePresence>
