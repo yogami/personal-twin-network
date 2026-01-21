@@ -43,3 +43,7 @@ next-env.d.ts
 # playwright
 playwright-report/
 test-results/
+
+# Agent Context Injections
+.agent_rules.md
+.agent_catalog.md

@@ -383,3 +383,172 @@ export function PrivacyBadge({ isPrivate }: PrivacyBadgeProps) {
         </div>
     );
 }
+
+// ============================================================================
+// Privacy Cockpit - Full data sovereignty dashboard for EU users
+// ============================================================================
+
+interface PrivacyCockpitProps {
+    localItemsCount: number;
+    sharedItemsCount: number;
+}
+
+export function PrivacyCockpit({ localItemsCount, sharedItemsCount }: PrivacyCockpitProps) {
+    return (
+        <div className="privacy-cockpit">
+            <h3 className="cockpit-title">
+                🛡️ Your Data, Your Control
+            </h3>
+
+            <div className="cockpit-grid">
+                <div className="cockpit-card local">
+                    <div className="card-header">
+                        <div className="card-icon">📱</div>
+                        <div className="card-info">
+                            <p className="card-label">On Your Phone</p>
+                            <p className="card-value">{localItemsCount}</p>
+                        </div>
+                    </div>
+                    <p className="card-desc">
+                        Items stored locally, never sent to servers
+                    </p>
+                </div>
+
+                <div className="cockpit-card shared">
+                    <div className="card-header">
+                        <div className="card-icon">🤝</div>
+                        <div className="card-info">
+                            <p className="card-label">Shared (Consented)</p>
+                            <p className="card-value">{sharedItemsCount}</p>
+                        </div>
+                    </div>
+                    <p className="card-desc">
+                        Match results shared with event
+                    </p>
+                </div>
+            </div>
+
+            <div className="gdpr-notice">
+                <span className="gdpr-flag">🇪🇺</span>
+                <p className="gdpr-text">
+                    <strong>GDPR Compliant</strong> — Your profile vectors and personal data stay on your device.
+                    Only match results you consent to share are transmitted.
+                </p>
+            </div>
+
+            <style jsx>{`
+                .privacy-cockpit {
+                    background: rgba(15, 15, 25, 0.5);
+                    border-radius: 16px;
+                    padding: 1.5rem;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .cockpit-title {
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    color: white;
+                    margin-bottom: 1rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .cockpit-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 1rem;
+                }
+
+                .cockpit-card {
+                    border-radius: 12px;
+                    padding: 1rem;
+                    border: 1px solid;
+                }
+
+                .cockpit-card.local {
+                    background: rgba(74, 222, 128, 0.1);
+                    border-color: rgba(74, 222, 128, 0.2);
+                }
+
+                .cockpit-card.shared {
+                    background: rgba(251, 191, 36, 0.1);
+                    border-color: rgba(251, 191, 36, 0.2);
+                }
+
+                .card-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    margin-bottom: 0.5rem;
+                }
+
+                .card-icon {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.25rem;
+                }
+
+                .cockpit-card.local .card-icon {
+                    background: rgba(74, 222, 128, 0.2);
+                }
+
+                .cockpit-card.shared .card-icon {
+                    background: rgba(251, 191, 36, 0.2);
+                }
+
+                .card-label {
+                    font-size: 0.8rem;
+                    margin: 0;
+                }
+
+                .cockpit-card.local .card-label {
+                    color: #4ade80;
+                }
+
+                .cockpit-card.shared .card-label {
+                    color: #fbbf24;
+                }
+
+                .card-value {
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: white;
+                    margin: 0;
+                }
+
+                .card-desc {
+                    font-size: 0.75rem;
+                    color: rgba(255, 255, 255, 0.5);
+                    margin: 0;
+                }
+
+                .gdpr-notice {
+                    margin-top: 1rem;
+                    padding: 0.75rem;
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+
+                .gdpr-flag {
+                    font-size: 1.5rem;
+                }
+
+                .gdpr-text {
+                    font-size: 0.75rem;
+                    color: rgba(255, 255, 255, 0.7);
+                    margin: 0;
+                    line-height: 1.4;
+                }
+            `}</style>
+        </div>
+    );
+}
+
