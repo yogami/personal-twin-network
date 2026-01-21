@@ -21,6 +21,7 @@ export interface Match {
     matchedTwinId: string;
     score: number; // 0-100 compatibility score
     sharedInterests: string[];
+    reasoning?: string; // WHY you matched
     matchedProfile: MatchedProfile;
     createdAt: Date;
 }
@@ -33,6 +34,7 @@ export interface CreateMatchData {
     matchedTwinId: string;
     score: number;
     sharedInterests: string[];
+    reasoning?: string;
     matchedProfile: MatchedProfile;
 }
 
@@ -46,6 +48,7 @@ export function createMatch(data: CreateMatchData): Match {
         matchedTwinId: data.matchedTwinId,
         score: Math.max(0, Math.min(100, data.score)),
         sharedInterests: data.sharedInterests,
+        reasoning: data.reasoning,
         matchedProfile: data.matchedProfile,
         createdAt: new Date(),
     };

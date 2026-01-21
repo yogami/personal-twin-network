@@ -52,16 +52,20 @@ test.describe('CIC Demo Flow', () => {
     });
 
     test.describe('Matching Flow', () => {
-        test('shows matches automatically after entry', async ({ page }) => {
+        test('shows matches with reasoning automatically after entry', async ({ page }) => {
             await page.goto('/cic-demo');
             await page.click('#welcome-consent');
             await page.click('text=Start Check-in');
             await page.click('text=Skip');
             await page.click('text=Skip');
 
-            // Wait for results (increased timeout for monitor theater)
+            // Wait for results
             await page.waitForSelector('text=Top Matches', { timeout: 15000 });
             await expect(page.locator('.match-card').first()).toBeVisible();
+
+            // Verify reasoning is shown
+            await expect(page.locator('.match-reasoning').first()).toBeVisible();
+            await expect(page.locator('.match-reasoning').first()).not.toBeEmpty();
         });
     });
 
@@ -76,6 +80,25 @@ test.describe('CIC Demo Flow', () => {
                         isComplete: true,
                         nextQuestion: "Done!",
                         extractedProfile: { interests: ['AI/ML'] }
+                    })
+                });
+            });
+
+            // Mock Match API to include reasoning
+            await page.route('**/api/match', async route => {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        success: true,
+                        matches: [{
+                            id: 'test-match',
+                            name: 'AI Expert',
+                            headline: 'Machine Learning Lead',
+                            score: 95,
+                            sharedInterests: ['AI/ML'],
+                            reasoning: 'Both are builders in the AI space with a focus on ML deployment.'
+                        }]
                     })
                 });
             });

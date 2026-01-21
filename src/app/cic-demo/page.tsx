@@ -21,6 +21,7 @@ interface MatchResult {
     headline: string;
     score: number;
     sharedInterests: string[];
+    reasoning?: string;
 }
 
 const INTERESTS = [
@@ -380,18 +381,26 @@ export default function CICDemoPage() {
                         <h2>Top Matches 🎉</h2>
                         <div className="matches-list">
                             {matches.map((match, index) => (
-                                <div key={match.id} className="match-card">
-                                    <div className="match-rank">#{index + 1}</div>
-                                    <div className="match-info">
-                                        <h3>{match.name}</h3>
-                                        <p>{match.headline}</p>
-                                        <div className="shared-interests">
-                                            {match.sharedInterests.map(i => <span key={i} className="interest-tag">{i}</span>)}
+                                <div key={match.id} className="match-card-container">
+                                    <div className="match-card">
+                                        <div className="match-rank">#{index + 1}</div>
+                                        <div className="match-info">
+                                            <h3>{match.name}</h3>
+                                            <p className="headline">{match.headline}</p>
+                                            <div className="shared-interests">
+                                                {match.sharedInterests.map(i => <span key={i} className="interest-tag">{i}</span>)}
+                                            </div>
+                                        </div>
+                                        <div className="match-score">
+                                            <span className="score-value">{match.score}%</span>
                                         </div>
                                     </div>
-                                    <div className="match-score">
-                                        <span className="score-value">{match.score}%</span>
-                                    </div>
+                                    {match.reasoning && (
+                                        <div className="match-reasoning">
+                                            <Sparkles size={12} className="sparkle-icon" />
+                                            <span>{match.reasoning}</span>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -503,15 +512,31 @@ export default function CICDemoPage() {
                 .magic-tags-preview { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
                 .tag-float { background: #667eea33; border: 1px solid #667eea; padding: 0.3rem 0.6rem; border-radius: 20px; font-size: 0.7rem; animation: float 3s infinite; }
                 @keyframes float { 50% { transform: translateY(-5px); } }
-                .matches-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
-                .match-card { display: flex; items-center gap: 1rem; background: #111; padding: 1rem; border-radius: 12px; }
-                .match-rank { font-weight: bold; color: #667eea; }
+                .matches-list { display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 2rem; }
+                .match-card-container { display: flex; flex-direction: column; gap: 0.5rem; }
+                .match-card { display: flex; items-center gap: 1rem; background: #111; padding: 1.25rem; border-radius: 16px; border: 1px solid #222; }
+                .match-rank { font-weight: bold; color: #667eea; font-size: 1.1rem; }
                 .match-info { flex: 1; }
-                .match-info h3 { margin: 0; font-size: 1rem; }
-                .match-info p { margin: 0; font-size: 0.8rem; color: #888; }
-                .shared-interests { display: flex; gap: 0.25rem; margin-top: 0.5rem; }
-                .interest-tag { background: #667eea22; color: #667eea; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem; }
-                .score-value { font-size: 1.2rem; font-weight: bold; color: #4ade80; }
+                .match-info h3 { margin: 0; font-size: 1.1rem; }
+                .match-info .headline { margin: 0.2rem 0; font-size: 0.85rem; color: #aaa; }
+                .shared-interests { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+                .interest-tag { background: #667eea15; color: #667eea; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.7rem; border: 1px solid #667eea33; }
+                .score-value { font-size: 1.25rem; font-weight: bold; color: #4ade80; }
+                .match-reasoning { 
+                    background: rgba(102, 126, 234, 0.08); 
+                    border-radius: 12px; 
+                    padding: 0.75rem 1rem; 
+                    font-size: 0.85rem; 
+                    color: #d1d5db; 
+                    display: flex; 
+                    gap: 0.75rem; 
+                    align-items: flex-start;
+                    border-left: 3px solid #667eea;
+                    margin-left: 1rem;
+                    animation: slideRight 0.5s ease-out;
+                }
+                @keyframes slideRight { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+                .sparkle-icon { color: #667eea; margin-top: 0.2rem; flex-shrink: 0; }
                 .matching-animation { position: relative; width: 60px; height: 60px; margin: 0 auto 1.5rem; }
                 .pulse-ring { border: 2px solid #667eea; border-radius: 50%; inset: 0; position: absolute; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 100% { transform: scale(1.5); opacity: 0; } }

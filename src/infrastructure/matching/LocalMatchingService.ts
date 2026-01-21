@@ -32,6 +32,7 @@ export class LocalMatchingService implements IMatchingService {
         for (const candidate of candidateTwins) {
             const score = await this.calculateScore(userTwin, candidate);
             const sharedInterests = this.findSharedInterests(userTwin, candidate);
+            const reasoning = this.generateLocalReasoning(userTwin, candidate, score, sharedInterests);
 
             matches.push(
                 createMatch({
@@ -39,6 +40,7 @@ export class LocalMatchingService implements IMatchingService {
                     matchedTwinId: candidate.id,
                     score,
                     sharedInterests,
+                    reasoning,
                     matchedProfile: {
                         name: candidate.publicProfile.name,
                         headline: candidate.publicProfile.headline,
@@ -49,6 +51,19 @@ export class LocalMatchingService implements IMatchingService {
 
         // Sort by score descending
         return matches.sort((a, b) => b.score - a.score);
+    }
+
+    /**
+     * Generate simple reasoning for local matches
+     */
+    private generateLocalReasoning(twin1: Twin, twin2: Twin, score: number, shared: string[]): string {
+        if (score > 85) {
+            return `Strong alignment in ${shared.slice(0, 2).join(' and ')}. Both focus on similar high-level domains.`;
+        }
+        if (shared.length > 0) {
+            return `You share interests in ${shared.slice(0, 2).join(', ')}. Worth chatting about potential overlaps.`;
+        }
+        return `Compatible professional profiles with complementary skill sets.`;
     }
 
     /**

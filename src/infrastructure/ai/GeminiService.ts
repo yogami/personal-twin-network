@@ -28,7 +28,7 @@ export class GeminiService implements IMatchingService {
         const matches: Match[] = [];
 
         for (const candidate of candidateTwins) {
-            const score = await this.calculateScore(userTwin, candidate);
+            const { score, reasoning } = await this.calculateMatchDetails(userTwin, candidate);
             const sharedInterests = this.findSharedInterests(userTwin, candidate);
 
             matches.push(
@@ -37,6 +37,7 @@ export class GeminiService implements IMatchingService {
                     matchedTwinId: candidate.id,
                     score,
                     sharedInterests,
+                    reasoning,
                     matchedProfile: {
                         name: candidate.publicProfile.name,
                         headline: candidate.publicProfile.headline,
@@ -50,17 +51,32 @@ export class GeminiService implements IMatchingService {
     }
 
     async calculateScore(twin1: Twin, twin2: Twin): Promise<number> {
+        const { score } = await this.calculateMatchDetails(twin1, twin2);
+        return score;
+    }
+
+    private async calculateMatchDetails(twin1: Twin, twin2: Twin): Promise<{ score: number, reasoning: string }> {
         const prompt = this.buildMatchingPrompt(twin1, twin2);
 
         try {
             const result = await this.model.generateContent(prompt);
-            const response = result.response.text();
-            const score = this.parseScoreFromResponse(response);
-            return Math.max(0, Math.min(100, score));
+            const text = result.response.text();
+
+            // Try to extract JSON from markdown if present
+            const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const data = JSON.parse(jsonStr);
+
+            return {
+                score: Math.max(0, Math.min(100, data.score || 50)),
+                reasoning: data.reasoning || 'No details provided.'
+            };
         } catch (error) {
             console.error('Gemini matching error:', error);
-            // Fallback to basic skill/interest matching
-            return this.calculateBasicScore(twin1, twin2);
+            const basicScore = this.calculateBasicScore(twin1, twin2);
+            return {
+                score: basicScore,
+                reasoning: 'Basic compatibility analysis based on shared interests.'
+            };
         }
     }
 
@@ -86,18 +102,12 @@ Consider:
 3. Potential for collaboration or mutual value
 4. Similar industry/domain focus
 
-Return ONLY a number between 0-100 representing the match quality.
-Higher = better networking match.
+Return ONLY a JSON object with this structure:
+{
+  "score": number (0-100),
+  "reasoning": "A concise 1-2 sentence explanation of WHY they matched (keep it professional and inspiring)"
+}
 `;
-    }
-
-    private parseScoreFromResponse(response: string): number {
-        // Extract number from response
-        const match = response.match(/\d+/);
-        if (match) {
-            return parseInt(match[0], 10);
-        }
-        return 50; // Default middle score
     }
 
     private calculateBasicScore(twin1: Twin, twin2: Twin): number {
