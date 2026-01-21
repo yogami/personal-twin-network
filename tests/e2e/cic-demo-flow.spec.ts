@@ -179,8 +179,22 @@ test.describe('STT Simulation & AI Magic', () => {
             });
         });
 
-        // 2. Inject mock Speech Recognition
+        // 2. Inject robust mocks for Speech Recognition AND Synthesis
         await page.addInitScript(() => {
+            // Mock Synthesis
+            (window as any).speechSynthesis = {
+                speak: (utterance: any) => {
+                    setTimeout(() => {
+                        if (utterance.onstart) utterance.onstart();
+                        setTimeout(() => {
+                            if (utterance.onend) utterance.onend();
+                        }, 100);
+                    }, 10);
+                },
+                cancel: () => { },
+                getVoices: () => []
+            };
+
             class MockRecognition {
                 onresult: any = null;
                 onend: any = null;
@@ -203,7 +217,10 @@ test.describe('STT Simulation & AI Magic', () => {
                                 resultIndex: 0
                             });
                         }
-                        if (this.onend) this.onend();
+                        // Small delay to ensure transcriptRef updates
+                        setTimeout(() => {
+                            if (this.onend) this.onend();
+                        }, 100);
                     }, 1000);
                 }
                 stop() { }
